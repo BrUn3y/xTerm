@@ -2,6 +2,8 @@
 
 A desktop terminal built with Electron, React, TypeScript, xterm.js, and node-pty. An industrial interface in orange, paper, and carbon.
 
+[Website & screenshots](https://brun3y.github.io/xTerm/) · [Download for Mac (Apple Silicon)](https://github.com/BrUn3y/xTerm/releases/download/v0.4.0/xTerm-0.4.0-arm64.dmg) · [Release notes](https://github.com/BrUn3y/xTerm/releases)
+
 ## Run
 
 Requires Node.js 22.12 or later. On macOS, native modules require Xcode Command Line Tools (`xcode-select --install`).
@@ -117,12 +119,17 @@ If you change Electron versions or `node-pty` fails to load, run `npm run rebuil
 ```text
 electron/       Main process, IPC bridge, and temporary shell integration
 src/            React interface, terminal, explorer, and preferences
+docs/           GitHub Pages website, application screenshots, and bundled web fonts
 build/          Application icons (SVG, PNG, ICNS, ICO)
 scripts/        Development startup, native tests, and icon generation
 tests/          Shell and pseudoterminal integration tests
 ```
 
 The renderer uses context isolation and sandboxing, without direct Node.js access. Native operations pass through a scoped IPC bridge. Popups are blocked and external links are limited to HTTP/HTTPS. Commands run with your user permissions, like other local terminals.
+
+## Website
+
+The static website is published through GitHub Pages from `main`, using the `/docs` folder. It has no build step or external runtime dependencies. Preview it with `python3 -m http.server 4173 --directory docs`, then open `http://localhost:4173`. Screenshots come from the desktop application; update the download URLs and version labels when publishing a new release.
 
 ## License
 

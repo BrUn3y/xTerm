@@ -1,0 +1,453 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#f3f2ed" />
+    <meta
+      name="description"
+      content="A terminal with a different point of view. Meet xTerm: real shell sessions, split panes, a built-in explorer, and a space for your coding agents. Download for Mac."
+    />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="xTerm — A space to create." />
+    <meta
+      property="og:description"
+      content="Your shell. Your space. Your pace. An open-source desktop terminal in orange, paper, and carbon."
+    />
+    <meta property="og:url" content="https://brun3y.github.io/xTerm/" />
+    <meta
+      property="og:image"
+      content="https://brun3y.github.io/xTerm/assets/xterm-light.webp"
+    />
+    <meta name="twitter:card" content="summary_large_image" />
+    <title>xTerm — A space to create.</title>
+    <link rel="canonical" href="https://brun3y.github.io/xTerm/" />
+    <link rel="icon" href="assets/icon.svg" type="image/svg+xml" />
+    <link
+      rel="preload"
+      href="assets/fonts/dm-sans.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
+    <link rel="stylesheet" href="styles.css" />
+    <script src="site.js" defer></script>
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to content</a>
+    <div class="page-shell">
+      <header class="site-header">
+        <a class="brand" href="./" aria-label="xTerm home"
+          ><span class="brand-mark" aria-hidden="true">x_</span
+          ><span>xTerm<span class="brand-period">®</span></span></a
+        >
+        <span class="header-note mono">A SPACE TO CREATE</span>
+        <nav aria-label="Main navigation">
+          <a class="nav-detail" href="#features">Features</a>
+          <a class="nav-detail" href="#in-focus">In focus</a>
+          <a href="https://github.com/BrUn3y/xTerm"
+            >GitHub <span aria-hidden="true">↗</span></a
+          >
+          <a class="nav-download" href="#download"
+            >Get xTerm <span aria-hidden="true">↓</span></a
+          >
+        </nav>
+      </header>
+    </div>
+    <main id="main">
+      <div class="page-shell">
+        <section class="hero" aria-labelledby="hero-title">
+          <div class="section-meta mono">
+            <span><i class="orange-square"></i> TERMINAL, REIMAGINED.</span
+            ><a href="https://github.com/BrUn3y/xTerm/releases/tag/v0.4.0"
+              ><i class="status-dot"></i> V0.4.0 IS HERE
+              <span aria-hidden="true">↗</span></a
+            >
+          </div>
+          <div class="hero-content">
+            <h1 id="hero-title">
+              Your shell.<br />Your
+              <span class="space-word"
+                >space<span class="cursor" aria-hidden="true">_</span></span
+              >
+            </h1>
+            <div class="hero-aside">
+              <p class="hero-intro">
+                A terminal with a different point of view.
+              </p>
+              <p>
+                A little less noise. A lot more room to build. Your familiar
+                shell, coding agents, and files, together in a thoughtfully
+                crafted desktop workspace.
+              </p>
+              <a
+                class="button button-orange"
+                href="https://github.com/BrUn3y/xTerm/releases/download/v0.4.0/xTerm-0.4.0-arm64.dmg"
+                ><svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.5"
+                  aria-hidden="true"
+                >
+                  <path d="M12 3v12m-5-5 5 5 5-5M5 16v5h14v-5" /></svg
+                >Download for Mac<span class="button-arrow" aria-hidden="true"
+                  >↗</span
+                ></a
+              >
+              <span class="download-meta mono"
+                >V0.4.0 &nbsp;/&nbsp; APPLE SILICON &nbsp;/&nbsp; FREE & OPEN
+                SOURCE</span
+              >
+            </div>
+          </div>
+          <div class="preview-meta">
+            <span class="mono">01 / MEET YOUR NEW WORKSPACE</span>
+            <div
+              class="appearance-switch"
+              role="group"
+              aria-label="Screenshot appearance"
+              hidden
+            >
+              <button type="button" data-appearance="light" aria-pressed="true">
+                <span class="mode-swatch light-swatch" aria-hidden="true"></span
+                >Light</button
+              ><button
+                type="button"
+                data-appearance="dark"
+                aria-pressed="false"
+              >
+                <span class="mode-swatch dark-swatch" aria-hidden="true"></span
+                >Dark
+              </button>
+            </div>
+          </div>
+          <figure class="hero-preview">
+            <a
+              class="screenshot-link"
+              href="assets/xterm-light.webp"
+              data-zoom
+              data-caption="xTerm in Light mode — your terminal and files, side by side."
+              ><img
+                id="workspace-preview"
+                src="assets/xterm-light.webp"
+                alt="xTerm in Light mode, with a real zsh session, the orange Make It Happen poster, and the built-in file explorer."
+                width="1480"
+                height="940"
+                fetchpriority="high"
+              /><span class="zoom-hint mono"
+                >EXPAND <span aria-hidden="true">↗</span></span
+              ></a
+            >
+            <figcaption>
+              <span
+                ><i class="status-dot"></i>
+                <span id="preview-caption"
+                  >PAPER. ORANGE. POSSIBILITIES.</span
+                ></span
+              ><span class="mono">REAL APP. REAL SHELL.</span>
+            </figcaption>
+          </figure>
+          <div class="spec-strip mono">
+            <span>LOCAL SHELL</span><span>INDEPENDENT SESSIONS</span
+            ><span>AGENT AWARE</span
+            ><span>BUILT FOR YOUR FLOW <span aria-hidden="true">↗</span></span>
+          </div>
+        </section>
+
+        <section
+          class="features section"
+          id="features"
+          aria-labelledby="features-title"
+        >
+          <div class="section-heading">
+            <span class="eyebrow mono">02 / LESS FRICTION. MORE FLOW.</span>
+            <h2 id="features-title">
+              Everything in its place.<br />You in your element<span
+                class="orange-text"
+                >.</span
+              >
+            </h2>
+            <p>
+              The tools you reach for, with the space to make them your own.
+            </p>
+          </div>
+          <div class="feature-grid">
+            <article class="feature">
+              <span class="feature-number mono">01 /</span
+              ><svg
+                viewBox="0 0 32 32"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.4"
+                aria-hidden="true"
+              >
+                <rect x="4" y="6" width="24" height="21" rx="2" />
+                <path d="m9 12 4 4-4 4m8 0h6" />
+              </svg>
+              <h3>Your shell, at home.</h3>
+              <p>
+                Real zsh and bash sessions. Your aliases, history, completion,
+                and familiar command-line tools come with you.
+              </p>
+            </article>
+            <article class="feature">
+              <span class="feature-number mono">02 /</span
+              ><svg
+                viewBox="0 0 32 32"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.4"
+                aria-hidden="true"
+              >
+                <rect x="4" y="6" width="24" height="21" rx="2" />
+                <path d="M4 12h24M16 12v15m-8-18h3" />
+              </svg>
+              <h3>Room to work in parallel.</h3>
+              <p>
+                Independent tabs and split panes keep your server, your shell,
+                and your next idea within reach.
+              </p>
+            </article>
+            <article class="feature">
+              <span class="feature-number mono">03 /</span
+              ><svg
+                viewBox="0 0 32 32"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.4"
+                aria-hidden="true"
+              >
+                <rect x="6" y="9" width="20" height="17" rx="3" />
+                <path d="M16 4v5m-5 7h1m8 0h1m-10 5h10M2 15v6m28-6v6" />
+              </svg>
+              <h3>A space for your agents.</h3>
+              <p>
+                The HARNESS panel follows the active pane, showing detected
+                coding agents, reported models, and activity.
+              </p>
+            </article>
+            <article class="feature">
+              <span class="feature-number mono">04 /</span
+              ><svg
+                viewBox="0 0 32 32"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.4"
+                aria-hidden="true"
+              >
+                <path d="M4 11V7h9l3 4h12v15H4Z" />
+                <path d="m13 16 4 4-4 4m4-4h7" />
+              </svg>
+              <h3>Keep your files close.</h3>
+              <p>
+                A built-in explorer follows your directory. Drag a file into the
+                terminal to insert its safely quoted path.
+              </p>
+            </article>
+            <article class="feature">
+              <span class="feature-number mono">05 /</span
+              ><svg
+                viewBox="0 0 32 32"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.4"
+                aria-hidden="true"
+              >
+                <circle cx="16" cy="16" r="10" />
+                <path d="M16 6v20" />
+                <path
+                  d="M16 8a8 8 0 0 1 0 16Z"
+                  fill="currentColor"
+                  stroke="none"
+                />
+              </svg>
+              <h3>Find your kind of quiet.</h3>
+              <p>
+                Paper or carbon. JetBrains Mono or IBM Plex Mono. Animated
+                backgrounds or a clean canvas. Set your own pace.
+              </p>
+            </article>
+            <article class="feature">
+              <span class="feature-number mono">06 /</span
+              ><svg
+                viewBox="0 0 32 32"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.4"
+                aria-hidden="true"
+              >
+                <path
+                  d="M12 6H9a4 4 0 0 0-4 4v12a4 4 0 0 0 4 4h3m8-20h3a4 4 0 0 1 4 4v12a4 4 0 0 1-4 4h-3m-2-20-4 20"
+                />
+              </svg>
+              <h3>Open from the start.</h3>
+              <p>
+                Free to use, MIT licensed, and open source. Explore the code,
+                make it yours, or help shape what comes next.
+              </p>
+            </article>
+          </div>
+        </section>
+      </div>
+
+      <section
+        class="focus-section"
+        id="in-focus"
+        aria-labelledby="focus-title"
+      >
+        <div class="page-shell">
+          <div class="focus-heading">
+            <div>
+              <span class="eyebrow mono">03 / A CLOSER LOOK</span>
+              <h2 id="focus-title">
+                Made for the way<br />you make things<span class="orange-text"
+                  >.</span
+                >
+              </h2>
+            </div>
+            <p>No mockups here.<br />Just xTerm, doing its thing.</p>
+          </div>
+          <div class="gallery">
+            <figure>
+              <a
+                class="screenshot-link"
+                href="assets/xterm-split.webp"
+                data-zoom
+                data-caption="Two real shell sessions in Dark mode, with the explorer alongside."
+                ><img
+                  src="assets/xterm-split.webp"
+                  alt="xTerm in Dark mode with two terminal panes and the filesystem explorer visible."
+                  width="1480"
+                  height="940"
+                  loading="lazy"
+                /><span class="zoom-hint mono"
+                  >EXPAND <span aria-hidden="true">↗</span></span
+                ></a
+              >
+              <figcaption>
+                <span class="mono">01 / TWO PANES. ONE FLOW.</span>
+                <p>Keep the bigger picture in view.</p>
+              </figcaption>
+            </figure>
+            <figure>
+              <a
+                class="screenshot-link"
+                href="assets/xterm-preferences.webp"
+                data-zoom
+                data-caption="xTerm preferences — fonts, appearance, backgrounds, and terminal behavior."
+                ><img
+                  src="assets/xterm-preferences.webp"
+                  alt="xTerm preferences showing the bundled fonts, appearance controls, and terminal customization options."
+                  width="1480"
+                  height="940"
+                  loading="lazy"
+                /><span class="zoom-hint mono"
+                  >EXPAND <span aria-hidden="true">↗</span></span
+                ></a
+              >
+              <figcaption>
+                <span class="mono">02 / A LITTLE MORE YOU.</span>
+                <p>Your workspace. Your preferences.</p>
+              </figcaption>
+            </figure>
+          </div>
+          <div class="focus-footer mono">
+            <span>ORANGE / PAPER / CARBON</span
+            ><span
+              >DESIGNED TO STAY OUT OF YOUR WAY
+              <span aria-hidden="true">↗</span></span
+            >
+          </div>
+        </div>
+      </section>
+
+      <div class="page-shell">
+        <section
+          class="download-section section"
+          id="download"
+          aria-labelledby="download-title"
+        >
+          <div class="download-poster" aria-hidden="true">
+            <span class="mono">NO. 001 — XTERM <span>↗</span></span>
+            <div>MAKE<br />IT<br />HAPPEN<span>.</span></div>
+            <span class="poster-bottom mono"
+              >LESS NOISE.<br />MORE POSSIBILITIES.<i class="barcode"></i></span
+            ><i class="poster-orbit"></i><span class="poster-cross">+</span>
+          </div>
+          <div class="download-content">
+            <span class="eyebrow mono">04 / YOUR NEXT MOVE</span>
+            <h2 id="download-title">
+              A fresh space.<br />A good place to start<span class="orange-text"
+                >.</span
+              >
+            </h2>
+            <p>Download xTerm for your Mac and make yourself at home.</p>
+            <a
+              class="button button-ink"
+              href="https://github.com/BrUn3y/xTerm/releases/download/v0.4.0/xTerm-0.4.0-arm64.dmg"
+              ><svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.5"
+                aria-hidden="true"
+              >
+                <path d="M12 3v12m-5-5 5 5 5-5M5 16v5h14v-5" /></svg
+              >Download for Mac<span class="button-arrow" aria-hidden="true"
+                >↓</span
+              ></a
+            ><span class="download-meta mono"
+              >V0.4.0 · MACOS · APPLE SILICON (ARM64) · 123 MB</span
+            >
+            <div class="download-alternatives">
+              <a
+                href="https://github.com/BrUn3y/xTerm/releases/download/v0.4.0/xTerm-0.4.0-arm64-mac.zip"
+                >Prefer a ZIP? <span aria-hidden="true">↗</span></a
+              ><a href="https://github.com/BrUn3y/xTerm/releases/tag/v0.4.0"
+                >Release notes & checksums <span aria-hidden="true">↗</span></a
+              >
+            </div>
+            <p class="install-note">
+              For Macs with an Apple chip. This release is unsigned and not
+              notarized by Apple. See
+              <a
+                href="https://support.apple.com/guide/mac-help/open-an-app-by-overriding-security-settings-mh40617/mac"
+                >Apple’s guide to opening an app from an unidentified
+                developer</a
+              >.
+            </p>
+          </div>
+        </section>
+      </div>
+    </main>
+    <div class="page-shell">
+      <footer class="site-footer">
+        <div>
+          <a class="footer-brand" href="./"
+            >xTerm<span class="orange-text">_</span></a
+          ><span class="mono">ONE IDEA. ONE COMMAND.</span>
+        </div>
+        <div>
+          <span class="mono">OPEN SOURCE / MIT</span
+          ><a href="https://github.com/BrUn3y/xTerm"
+            >Source code <span aria-hidden="true">↗</span></a
+          ><a href="https://github.com/BrUn3y/xTerm/issues"
+            >Say hello <span aria-hidden="true">↗</span></a
+          >
+        </div>
+      </footer>
+    </div>
+
+    <dialog class="image-dialog" aria-labelledby="image-dialog-caption">
+      <div class="dialog-toolbar">
+        <span class="mono">XTERM / IN FOCUS</span
+        ><button type="button" id="close-image">
+          Close <span aria-hidden="true">×</span>
+        </button>
+      </div>
+      <img id="expanded-image" alt="" />
+      <p id="image-dialog-caption"></p>
+    </dialog>
+  </body>
+</html>
