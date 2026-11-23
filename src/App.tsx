@@ -4,6 +4,7 @@ import TerminalPane from './components/TerminalPane';
 import Explorer from './components/Explorer';
 import SettingsPanel from './components/SettingsPanel';
 import AgentCard from './components/AgentCard';
+import {FILE_PATH_MIME} from './lib/dropped-paths.mjs';
 import { basename, fonts, loadSettings, shortPath } from './settings';
 import type { AppInfo, Pane, Settings, Tab, TerminalHandle } from './types';
 
@@ -19,6 +20,14 @@ type Overlay = 'settings' | 'palette' | 'help' | null;
 
 export default function App() {
   const [info, setInfo] = useState<AppInfo | null>(null);
+  useEffect(() => {
+    const preventFileNavigation = (event: DragEvent) => {
+      if (event.dataTransfer && ['Files',FILE_PATH_MIME,'text/uri-list'].some(type => event.dataTransfer!.types.includes(type))) event.preventDefault();
+    };
+    window.addEventListener('dragover', preventFileNavigation);
+    window.addEventListener('drop', preventFileNavigation);
+    return () => {window.removeEventListener('dragover', preventFileNavigation);window.removeEventListener('drop', preventFileNavigation);};
+  }, []);
   const [settings, setSettings] = useState<Settings>(loadSettings);
   const [shell, setShell] = useState('');
   const [tabs, setTabs] = useState<Tab[]>([]);
@@ -178,7 +187,7 @@ export default function App() {
   const activeFont = fonts.find(font => font.value === settings.font)?.name || 'Monospace';
   const totalSessions = tabs.reduce((total, tab) => total + tab.panes.length, 0);
   return <div className={`app theme-${settings.theme}`}>
-    <div className="titlebar"><div className="traffic-space">{info?.platform !== 'darwin' && <div className="window-buttons"><button title="Minimize" onClick={() => window.desktop?.windowAction('minimize')}><Minus size={12}/></button><button title="Maximize" onClick={() => window.desktop?.windowAction('maximize')}><Square size={10}/></button><button title="Close window" onClick={() => window.desktop?.windowAction('close')}><X size={12}/></button></div>}</div><span className="titlebar-center"><span className="titlebar-emblem">⌘</span> A SPACE TO CREATE</span><div className="titlebar-right"><span className="titlebar-version">v{info?.version || '0.3.1'}</span><button title="Command palette (⌘ K)" onClick={() => showOverlay('palette')}><Command size={12}/><span>K</span></button></div></div>
+    <div className="titlebar"><div className="traffic-space">{info?.platform !== 'darwin' && <div className="window-buttons"><button title="Minimize" onClick={() => window.desktop?.windowAction('minimize')}><Minus size={12}/></button><button title="Maximize" onClick={() => window.desktop?.windowAction('maximize')}><Square size={10}/></button><button title="Close window" onClick={() => window.desktop?.windowAction('close')}><X size={12}/></button></div>}</div><span className="titlebar-center"><span className="titlebar-emblem">⌘</span> A SPACE TO CREATE</span><div className="titlebar-right"><span className="titlebar-version">v{info?.version || '0.4.0'}</span><button title="Command palette (⌘ K)" onClick={() => showOverlay('palette')}><Command size={12}/><span>K</span></button></div></div>
     <div className="app-body">
       <aside className="sidebar">
         <div className="brand"><div className="brand-symbol" aria-hidden="true">x<span>_</span></div><span>xTerm<span className="brand-dot">®</span></span><span className="brand-label">TERMINAL<br/>REIMAGINED</span></div>
@@ -189,11 +198,10 @@ export default function App() {
           {projects.filter(project => project !== home).map(project => <div className="pinned-project" key={project}><button className="workspace-shortcut" title={project} onClick={() => navigate(project)}><Folder size={14}/><span>{basename(project)}</span></button><button className="icon-button remove-project" title="Remove saved workspace" onClick={() => setProjects(current => current.filter(item => item !== project))}><X size={11}/></button></div>)}
         </div>
         <div className="sidebar-section sessions-section"><div className="sidebar-label"><span>SESSIONS</span><button className="icon-button" title="New session (⌘ T)" onClick={() => newTab()}><Plus size={14}/></button></div>
-          {tabs.map((tab, index) => <button key={tab.id} className={`session-item ${tab.id === activeTabId ? 'selected' : ''}`} onClick={() => setActiveTabId(tab.id)}><span className="session-line"/><TerminalSquare size={14}/><span>{basename(tab.panes.find(pane => pane.id === tab.activePane)?.shell || shell)}<small>{tab.panes.length > 1 ? ' / split' : ` / ${String(index + 1).padStart(2,'0')}`}</small></span><i className={tab.panes.some(pane => pane.status === 'running') ? 'live-dot' : 'idle-dot'}/></button>)}
+          <div className="session-list">{tabs.map((tab, index) => <button key={tab.id} className={`session-item ${tab.id === activeTabId ? 'selected' : ''}`} onClick={() => setActiveTabId(tab.id)}><span className="session-line"/><TerminalSquare size={14}/><span>{basename(tab.panes.find(pane => pane.id === tab.activePane)?.shell || shell)}<small>{tab.panes.length > 1 ? ' / split' : ` / ${String(index + 1).padStart(2,'0')}`}</small></span><i className={tab.panes.some(pane => pane.status === 'running') ? 'live-dot' : 'idle-dot'}/></button>)}</div>
           <button className="new-session" onClick={() => newTab()}><Plus size={13}/><span>New session</span><kbd>⌘ T</kbd></button>
         </div>
-        <div className="sidebar-spacer"/>
-        <AgentCard agent={activePane?.agent || null}/>
+        <div className="harness-slot"><AgentCard agent={activePane?.agent || null}/></div>
         <div className="sidebar-footer"><button onClick={() => showOverlay('settings')}><Settings2 size={16}/><span>Preferences</span><kbd>⌘ ,</kbd></button><button className="help-button" title="Keyboard shortcuts" onClick={() => showOverlay('help')}><CircleHelp size={16}/></button></div>
       </aside>
       <main className="main-workspace">

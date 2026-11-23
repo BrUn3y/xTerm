@@ -1,4 +1,4 @@
-const { contextBridge, ipcRenderer } = require('electron');
+const { contextBridge, ipcRenderer, webUtils } = require('electron');
 const subscribe = (channel, callback) => {
   const listener = (_event, payload) => callback(payload);
   ipcRenderer.on(channel, listener);
@@ -7,6 +7,8 @@ const subscribe = (channel, callback) => {
 contextBridge.exposeInMainWorld('desktop', {
   info: () => ipcRenderer.invoke('app:info'),
   setAppearance: theme => ipcRenderer.send('app:appearance', theme),
+  droppedFilePaths: files => Array.from(files).slice(0,100).map(file => webUtils.getPathForFile(file)).filter(Boolean),
+  reportTerminalView: (id, lines) => ipcRenderer.send('terminal:view', {id,lines}),
   createTerminal: options => ipcRenderer.invoke('terminal:create', options),
   write: (id, data) => ipcRenderer.send('terminal:write', { id, data }),
   resize: (id, cols, rows) => ipcRenderer.send('terminal:resize', { id, cols, rows }),

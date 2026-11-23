@@ -122,6 +122,7 @@ class AgentMonitor {
   constructor(emit, now = Date.now) {
     this.emit = emit; this.now = now; this.agent = null; this.raw = ''; this.lastEmitted = '';
     this.lastActivity = 0; this.bridge = false; this.lastBridge = ''; this.sample = '';
+    this.screen = '';
   }
   publish() {
     const value = JSON.stringify(this.agent);
@@ -136,7 +137,7 @@ class AgentMonitor {
     if (!this.agent || this.agent.pid !== process.pid) {
       this.agent = {provider: process.provider, name: process.name, model: process.model, modelSource: process.model ? 'argument' : null, status: 'running', activitySource: 'process', pid: process.pid, startedAt: this.now()};
       const plain = stripVTControlCharacters(this.raw);
-      const model = modelFromOutput(plain, process.provider);
+      const model = modelFromOutput(this.screen, process.provider) || modelFromOutput(plain, process.provider);
       if (model) { this.agent.model = model; this.agent.modelSource = 'reported'; }
       const status = statusFromOutput(plain);
       if (status) { this.agent.status = status; this.agent.activitySource = 'terminal'; this.lastActivity = this.now(); }
@@ -148,6 +149,12 @@ class AgentMonitor {
     if (!this.agent || this.bridge || !/[\r\n]/.test(data)) return;
     this.lastActivity = this.now(); this.agent.status = 'working'; this.agent.activitySource = 'terminal'; this.publish();
   }
+  observeScreen(text) {
+    this.screen = text.slice(-8000);
+    if (!this.agent || this.bridge) return;
+    const model = modelFromOutput(this.screen,this.agent.provider);
+    if (model) {this.agent.model=model;this.agent.modelSource='reported';this.publish();}
+  }
   observeOutput(data) {
     this.raw = (this.raw + data).slice(-20000);
     const reports = [...this.raw.matchAll(/\x1b\]777;xterm-agent;([^\x07\x1b]{1,4096})(?:\x07|\x1b\\)/g)];
@@ -158,7 +165,7 @@ class AgentMonitor {
     if (!this.agent || this.bridge) return;
     const plain = stripVTControlCharacters(data).replace(/[\x00-\x08\x0b-\x1f\x7f]/g, '');
     this.sample = (this.sample + plain).slice(-5000);
-    const model = modelFromOutput(this.raw, this.agent.provider);
+    const model = modelFromOutput(this.screen,this.agent.provider) || modelFromOutput(this.raw, this.agent.provider);
     if (model) { this.agent.model = model; this.agent.modelSource = 'reported'; }
     // Evaluate the newest output instead of retaining old "working" or permission prompts.
     const status = statusFromOutput(plain);
@@ -182,7 +189,7 @@ class AgentMonitor {
     }
   }
   reset() {
-    this.agent = null; this.raw = ''; this.sample = ''; this.bridge = false; this.lastBridge = ''; this.publish();
+    this.agent = null; this.raw = ''; this.sample = ''; this.screen = ''; this.bridge = false; this.lastBridge = ''; this.publish();
   }
 }
 

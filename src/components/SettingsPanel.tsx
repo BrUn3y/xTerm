@@ -27,7 +27,7 @@ export default function SettingsPanel({settings, info, onChange, onClose, shell,
           <div className="setting-row"><label htmlFor="hidden-files">Show hidden files</label><input id="hidden-files" className="toggle" type="checkbox" checked={settings.showHidden} onChange={event => change('showHidden', event.target.checked)}/></div>
         </div>
       </div>
-      <footer className="settings-footer"><button className="text-button" onClick={() => onChange(defaultSettings)}><RotateCcw size={13}/> Reset defaults</button><span>xTerm / v{info?.version || '0.3.1'} <ArrowDownLeft size={13}/></span></footer>
+      <footer className="settings-footer"><button className="text-button" onClick={() => onChange(defaultSettings)}><RotateCcw size={13}/> Reset defaults</button><span>xTerm / v{info?.version || '0.4.0'} <ArrowDownLeft size={13}/></span></footer>
     </section>
   </div>;
 }

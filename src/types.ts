@@ -27,6 +27,8 @@ export interface TerminalHandle {
 export interface Desktop {
   info(): Promise<AppInfo>;
   setAppearance(theme: Settings['theme']): void;
+  droppedFilePaths(files: File[]): string[];
+  reportTerminalView(id: string, lines: string[]): void;
   createTerminal(options: {id: string; cwd: string; shell: string; cols: number; rows: number}): Promise<{id: string; cwd: string; shell: string; pid: number}>;
   write(id: string, data: string): void; resize(id: string, cols: number, rows: number): void;
   closeTerminal(id: string): Promise<void>;

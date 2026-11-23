@@ -38,13 +38,13 @@ The entire interface is in English, including application menus, preferences, to
 
 JetBrains Mono and IBM Plex Mono are bundled for offline use. Menlo and SF Mono use system fonts with fallbacks. Font size, line spacing, cursor shape, scrollback, and Blueprint / Contours / Clean backgrounds are configurable.
 
-## Agent mode
+## Harness panel
 
-The orange sidebar card follows the active pane. When a foreground coding harness is detected, the poster changes to a live instrument panel with its identity, logo or monogram, model, elapsed session time, and activity status. Exiting the harness returns to the poster. Switching tabs or panes shows that session's agent.
+The orange **HARNESS** card follows the active pane. It fills the remaining sidebar height, expands its identity area when there is room, and compacts as sessions are added. Long session lists scroll once the card reaches its minimum size. When a foreground coding harness is detected, the poster changes to a live instrument panel with its identity, logo or monogram, model, elapsed session time, and activity status. Exiting the harness returns to the poster. Switching tabs or panes shows that session's agent.
 
 Automatic process detection covers Codex, Claude Code, Bob, Gemini CLI, OpenCode, Aider, Goose, GitHub Copilot, Cursor Agent, Amp, Cline, Droid, Qwen Code, Continue, Pi, OpenHands, and custom executables ending in `-agent` or `-harness`. Detection is limited to descendants in the terminal's foreground process group, so unrelated or background agents do not appear in the card.
 
-Models are read from `--model`, `-m`, Codex's `-c model=...`, recognizable model headers, or the live Codex footer (for example, `GPT-6.1-Sol high · ~`). If a harness does not expose its model, the card says **Not reported**. It does not guess from account settings. **Working**, **Ready for input**, and **Needs attention** use terminal signals; when precise activity is unavailable, the neutral status is **Running**. These signals are a best-effort interpretation of each CLI's output, not provider API telemetry. Automatic process detection uses `ps` on macOS/Linux; Windows harnesses can use the reporting protocol below.
+Models are read from `--model`, `-m`, Codex's `-c model=...`, recognizable model headers, or the live Codex footer (for example, `GPT-6.1-Sol high · ~`). The bottom terminal rows are also read through xterm.js's public buffer API so models remain detectable when a harness draws its footer character by character with cursor positioning. If a harness does not expose its model, the card says **Not reported**. It does not guess from account settings. **Working**, **Ready for input**, and **Needs attention** use terminal signals; when precise activity is unavailable, the neutral status is **Running**. These signals are a best-effort interpretation of each CLI's output, not provider API telemetry. Automatic process detection uses `ps` on macOS/Linux; Windows harnesses can use the reporting protocol below.
 
 Any other harness can report exact status through the terminal, without changing its business logic, by emitting an OSC sequence from its wrapper or lifecycle hooks:
 
@@ -56,7 +56,7 @@ Supported statuses are `running`, `working`, `ready`, `attention`, and `stopped`
 
 ## Motion and terminal space
 
-The terminal welcome banner has been removed to leave more room for commands. Blueprint animates tracing lines and a scanning beam; Contours uses drifting rings and gentle waves. Working agents add an orange accent. Preferences include **Animate background**, and system **Reduce Motion** is respected. Clean has no background texture.
+The terminal welcome banner has been removed to leave more room for commands. The animated artwork sits above the terminal surface at low opacity and never intercepts pointer input. Blueprint animates tracing lines and a scanning beam; Contours uses drifting rings and gentle waves. Working agents add an orange accent. Preferences include **Animate background**, and system **Reduce Motion** is respected. Clean has no background texture.
 
 ## Features
 
@@ -71,6 +71,12 @@ The terminal welcome banner has been removed to leave more room for commands. Bl
 Quick commands are **inserted** into the prompt; press Enter to run them. Explorer navigation uses `cd` in the active session. In zsh, navigation is blocked while a foreground process is running; return to the prompt or open a new tab. Foreground activity detection is not available for bash.
 
 Directory integration uses temporary startup files that load your existing configuration. It does not modify `.zshrc`, `.zprofile`, `.bashrc`, or other user configuration files. Temporary files are removed when a session ends. Closing a pane or window terminates its shell processes.
+
+## Drag and drop
+
+Drag files or folders from Finder, or drag an entry from the built-in explorer, onto a terminal pane to insert its absolute path at the cursor. Multiple items are inserted as separate quoted arguments. File names with spaces, quotes, Unicode, or shell metacharacters are quoted for the active shell. Dropping never presses Enter or moves the original files.
+
+Native paths are obtained through Electron's `webUtils.getPathForFile` bridge without reading file contents. Local `file:` URI lists are supported as a fallback. Dropping outside a terminal cannot navigate the application to a file. POSIX quoting is tested with zsh and bash. PowerShell quoting is supported; cmd.exe rejects paths containing expansion/control characters that it cannot safely insert.
 
 ## Filesystem permissions
 

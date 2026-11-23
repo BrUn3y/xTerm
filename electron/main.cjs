@@ -129,6 +129,11 @@ ipcMain.on('terminal:write', (_event, { id, data }) => {
     session?.process.write(data);
   }
 });
+ipcMain.on('terminal:view', (_event, {id,lines}) => {
+  if (Array.isArray(lines) && lines.length <= 8 && lines.every(line=>typeof line === 'string' && line.length <= 1000)) {
+    sessions.get(id)?.agentMonitor.observeScreen(lines.join('\n'));
+  }
+});
 ipcMain.on('terminal:resize', (_event, { id, cols, rows }) => {
   if (Number.isInteger(cols) && Number.isInteger(rows) && cols >= 2 && cols <= 1000 && rows >= 1 && rows <= 500) {
     try { sessions.get(id)?.process.resize(cols, rows); } catch { /* Resized after exit. */ }

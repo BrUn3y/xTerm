@@ -1,12 +1,13 @@
-import { useEffect, useRef } from 'react';
+import { type DragEvent, useEffect, useRef, useState } from 'react';
 import { Terminal } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
 import { SearchAddon } from '@xterm/addon-search';
 import { WebLinksAddon } from '@xterm/addon-web-links';
-import { ArrowUpRight, CornerDownLeft, RotateCcw, X } from 'lucide-react';
+import { ArrowDownToLine, ArrowUpRight, CornerDownLeft, RotateCcw, X } from 'lucide-react';
 import type { Pane, Settings, TerminalHandle } from '../types';
 import { themeColors, basename } from '../settings';
 import { adaptTerminalRows } from '../terminal-appearance';
+import {FILE_PATH_MIME, pathsFromDropData, quoteDroppedPaths} from '../lib/dropped-paths.mjs';
 
 interface Props {
   pane: Pane; settings: Settings; active: boolean; visible: boolean; split: boolean;
@@ -20,6 +21,24 @@ export default function TerminalPane(props: Props) {
   const termRef = useRef<Terminal | null>(null);
   const fitRef = useRef<FitAddon | null>(null);
   const current = useRef(props); current.current = props;
+  const [dragging, setDragging] = useState(false);
+  const [dropError, setDropError] = useState('');
+  const dragDepth = useRef(0);
+  const canDrop = (data: DataTransfer) => ['Files',FILE_PATH_MIME,'text/uri-list'].some(type => data.types.includes(type));
+  const dropPaths = (event: DragEvent<HTMLElement>) => {
+    event.preventDefault(); event.stopPropagation(); dragDepth.current = 0; setDragging(false); setDropError('');
+    const terminal = termRef.current;
+    if (!terminal || current.current.pane.status !== 'running') { setDropError('Start a session to insert a path.'); return; }
+    try {
+      const nativePaths = window.desktop?.droppedFilePaths(Array.from(event.dataTransfer.files)) || [];
+      const paths = nativePaths.length ? nativePaths : pathsFromDropData(event.dataTransfer.getData(FILE_PATH_MIME), event.dataTransfer.getData('text/uri-list'));
+      if (!paths.length) return;
+      const buffer = terminal.buffer.active;
+      const previous = buffer.getLine(buffer.baseY + buffer.cursorY)?.getCell(buffer.cursorX - 1)?.getChars() || '';
+      const text = (previous && !/\s/.test(previous) ? ' ' : '') + quoteDroppedPaths(paths, current.current.pane.shell);
+      current.current.onFocus(pane.id); terminal.paste(text); terminal.focus();
+    } catch (error) { setDropError(error instanceof Error ? error.message : 'Could not insert the file path.'); }
+  };
   useEffect(() => {
     const desktop = window.desktop;
     if (!container.current || !desktop) return;
@@ -37,8 +56,19 @@ export default function TerminalPane(props: Props) {
     terminal.loadAddon(fit); terminal.loadAddon(search);
     terminal.loadAddon(new WebLinksAddon((_event, url) => void desktop.openExternal(url)));
     terminal.open(container.current);
+    let viewTimer: ReturnType<typeof setTimeout> | undefined;
+    let lastView = '';
+    const reportView = () => {
+      viewTimer = undefined;
+      if (disposed) return;
+      const buffer = terminal.buffer.active;
+      const lines = Array.from({length:Math.min(8,terminal.rows)},(_,index)=>buffer.getLine(buffer.baseY + terminal.rows - Math.min(8,terminal.rows) + index)?.translateToString(true) || '');
+      const text = lines.join('\n');
+      if (text !== lastView) {lastView=text;desktop.reportTerminalView(pane.id,lines);}
+    };
     const renderListener = terminal.onRender(({start,end}) => {
       if (container.current) adaptTerminalRows(container.current, current.current.settings.theme, start, end);
+      if (!viewTimer) viewTimer=setTimeout(reportView,150);
     });
     termRef.current = terminal; fitRef.current = fit;
     terminal.attachCustomKeyEventHandler(event => {
@@ -92,6 +122,7 @@ export default function TerminalPane(props: Props) {
     });
     return () => {
       disposed = true; observer.disconnect(); unsubscribeData(); unsubscribeCwd(); unsubscribeExit();
+      clearTimeout(viewTimer);
       dataListener.dispose(); resizeListener.dispose(); renderListener.dispose(); terminal.dispose();
       termRef.current = null; fitRef.current = null; current.current.onHandle(pane.id, null);
       if (created) void desktop.closeTerminal(pane.id);
@@ -117,10 +148,16 @@ export default function TerminalPane(props: Props) {
     });
     return () => cancelAnimationFrame(frame);
   }, [active, visible]);
-  return <section className={`terminal-pane ${active ? 'is-active' : ''}`} onMouseDown={() => props.onFocus(pane.id)}>
+  return <section className={`terminal-pane ${active ? 'is-active' : ''} ${dragging ? 'is-dragging' : ''}`} onMouseDown={() => props.onFocus(pane.id)}
+    onDragEnter={event => {if (canDrop(event.dataTransfer)) {event.preventDefault();dragDepth.current++;setDragging(true);}}}
+    onDragOver={event => {if (canDrop(event.dataTransfer)) {event.preventDefault();event.dataTransfer.dropEffect='copy';}}}
+    onDragLeave={() => {dragDepth.current=Math.max(0,dragDepth.current-1);if (!dragDepth.current) setDragging(false);}}
+    onDrop={dropPaths}>
     {split && <div className="pane-heading"><span><i className={pane.status === 'running' ? 'live-dot' : 'idle-dot'} /> {basename(pane.cwd)} <small>{basename(pane.shell)}</small></span><button className="icon-button" title="Close pane" onClick={() => props.onClose(pane.id)}><X size={13}/></button></div>}
     <div className="shell-caption"><span><i className={pane.status === 'running' ? 'live-dot' : 'idle-dot'} /> {basename(pane.shell)} <span className="caption-separator">/</span> local session</span><span>UTF-8 <CornerDownLeft size={11}/></span></div>
     <div className="terminal-mount" ref={container} aria-label={`Terminal ${basename(pane.cwd)}`} />
+    {dragging && <div className="terminal-drop-hint"><ArrowDownToLine size={21}/><strong>Drop to insert path</strong><span>Files stay where they are. Press Enter to run.</span></div>}
+    {dropError && <div className="terminal-drop-error" role="status"><span>{dropError}</span><button title="Dismiss drop message" onClick={() => setDropError('')}><X size={13}/></button></div>}
     {!window.desktop && <div className="browser-message"><ArrowUpRight size={22}/><strong>Your terminal belongs on the desktop.</strong><p>Start xTerm with <code>npm run dev</code> to connect your real shell.</p></div>}
     {(pane.status === 'exited' || pane.status === 'error') && <button className="restart-session" onClick={() => props.onRestart(pane.id)}><RotateCcw size={14}/> Restart session</button>}
   </section>;

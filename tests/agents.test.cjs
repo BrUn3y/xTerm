@@ -114,3 +114,22 @@ test('independent terminal monitors cannot leak models or status across sessions
   assert.equal(second.agent.name, 'Claude Code'); assert.equal(second.agent.status, 'running');
   assert.equal(second.agent.model, 'model-two');
 });
+
+test('rendered terminal footer resolves models split apart by TUI cursor drawing',()=>{
+  const monitor=new AgentMonitor(()=>{});
+  monitor.setProcess({pid:1,provider:'codex',name:'Codex',model:null});
+  monitor.observeOutput('G\x1b[1;2HP\x1b[1;3HT\x1b[1;4H-\x1b[1;5H6');
+  assert.equal(monitor.agent.model,null);
+  monitor.observeScreen('Ask Codex to do anything\nGPT-6.1-Sol high · ~/project');
+  assert.equal(monitor.agent.model,'GPT-6.1-Sol');
+  monitor.observeScreen('Ask Codex to do anything\nGPT-6.2 high · ~/project');
+  assert.equal(monitor.agent.model,'GPT-6.2');
+  monitor.reset(); assert.equal(monitor.agent,null); assert.equal(monitor.screen,'');
+});
+
+test('screen reports do not create agents or cross terminal boundaries',()=>{
+  const first=new AgentMonitor(()=>{}),second=new AgentMonitor(()=>{});
+  first.observeScreen('GPT-6.1-Sol high · ~'); assert.equal(first.agent,null);
+  first.setProcess({pid:42,provider:'codex',name:'Codex',model:null});
+  assert.equal(first.agent.model,'GPT-6.1-Sol'); assert.equal(second.agent,null);
+});
