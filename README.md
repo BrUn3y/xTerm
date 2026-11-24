@@ -114,6 +114,11 @@ npm run build       # Strict TypeScript checking and production compilation
 
 If you change Electron versions or `node-pty` fails to load, run `npm run rebuild`. PTY tests use Electron's binary to match the native ABI. Shell tests require zsh or bash and are skipped if neither is present.
 
+The draft Shift+Enter work uses negotiated Kitty keyboard reporting, not a
+global newline remapping. See [keyboard validation](docs/keyboard-validation.md)
+for the real Codex comparison, native test commands and the blocking upstream
+stack-restoration failure.
+
 ## Project structure
 
 ```text

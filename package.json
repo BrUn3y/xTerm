@@ -24,7 +24,9 @@
     "package": "npm run build && electron-builder --dir",
     "dist": "npm run build && electron-builder",
     "test": "node --test tests/*.test.cjs",
-    "test:pty": "node scripts/test-pty.mjs"
+    "test:pty": "node scripts/test-pty.mjs",
+    "test:keyboard-desktop": "node scripts/test-keyboard-desktop.mjs",
+    "test:keyboard-stack": "node scripts/test-keyboard-stack.mjs"
   },
   "dependencies": {
     "@fontsource-variable/dm-sans": "^5.2.8",
@@ -33,7 +35,7 @@
     "@xterm/addon-fit": "^0.11.0",
     "@xterm/addon-search": "^0.16.0",
     "@xterm/addon-web-links": "^0.12.0",
-    "@xterm/xterm": "^6.0.0",
+    "@xterm/xterm": "6.1.0-beta.339",
     "lucide-react": "^0.468.0",
     "node-pty": "^1.1.0",
     "react": "^19.2.0",
@@ -47,6 +49,7 @@
     "@vitejs/plugin-react": "^5.1.0",
     "electron": "^45.4.1",
     "electron-builder": "^26.0.12",
+    "playwright": "1.65.0",
     "typescript": "^5.9.3",
     "vite": "^7.2.0"
   },
