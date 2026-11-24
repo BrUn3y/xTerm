@@ -60,6 +60,16 @@ XTERM_EXPECT_CLIPBOARD_BUG=1 XTERM_TEST_APP_ROOT=/absolute/path/to/baseline \
 ```
 
 The Clipboard Regression workflow runs unit/build and native clipboard checks
-on macOS and Linux. Physical macOS keyboard/menu acceleration, the reported
+on macOS and Linux. The same native clipboard suite also passed locally on
+macOS arm64 for v0.5.1. Release builds additionally verify the signed bundle
+and run the suite against the applications extracted from both DMG and ZIP:
+
+```sh
+node scripts/verify-mac-release.mjs
+# For a local version-specific output directory:
+node scripts/verify-mac-release.mjs release/v0.5.1
+```
+
+Each packaged run uses isolated application data. Physical macOS keyboard/menu acceleration, the reported
 user's installed Codex version, Windows and other coding harnesses have not
 been validated locally. The exact shortcut in the report was not specified.

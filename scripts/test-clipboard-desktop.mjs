@@ -8,16 +8,20 @@ import {fileURLToPath} from 'node:url';
 const home = await mkdtemp(path.join(os.tmpdir(), 'xterm-clipboard-'));
 const output = process.env.XTERM_UI_TEST_OUTPUT || 'artifacts/clipboard-desktop';
 const baseline = process.env.XTERM_EXPECT_CLIPBOARD_BUG === '1';
+const executablePath = process.env.XTERM_DESKTOP_TEST_EXECUTABLE;
 await mkdir(output, {recursive: true});
 let application;
 const errors = [];
 try {
   application = await electron.launch({
-    args: [...(process.getuid?.() === 0 ? ['--no-sandbox'] : []), '.'],
+    executablePath,
+    args: [`--user-data-dir=${path.join(home, 'user-data')}`,
+      ...(process.getuid?.() === 0 ? ['--no-sandbox'] : []), ...(executablePath ? [] : ['.'])],
     cwd: process.env.XTERM_TEST_APP_ROOT || process.cwd(),
     env: {...process.env, HOME: home, XDG_CONFIG_HOME: home, SHELL: '/bin/bash', XTERM_DEV_URL: '', ELECTRON_RUN_AS_NODE: ''},
   });
   const page = await application.firstWindow();
+  assert.equal(await application.evaluate(({app}) => app.isPackaged), !!executablePath);
   page.on('pageerror', error => errors.push(error.message));
   await page.getByText('Session connected', {exact: true}).waitFor();
   await application.evaluate(({ipcMain}) => {
