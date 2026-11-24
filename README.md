@@ -2,14 +2,14 @@
 
 A desktop terminal built with Electron, React, TypeScript, xterm.js, and node-pty. An industrial interface in orange, paper, and carbon.
 
-[Website & screenshots](https://brun3y.github.io/xTerm/) · [Download for Mac (Apple Silicon)](https://github.com/BrUn3y/xTerm/releases/download/v0.4.0/xTerm-0.4.0-arm64.dmg) · [Release notes](https://github.com/BrUn3y/xTerm/releases)
+[Website & screenshots](https://brun3y.github.io/xTerm/) · [Download for Mac (Apple Silicon)](https://github.com/BrUn3y/xTerm/releases/download/v0.5.0/xTerm-0.5.0-arm64.dmg) · [Release notes](https://github.com/BrUn3y/xTerm/releases)
 
-The `0.5.0-beta.2` preview includes an active-repository GitHub link, an SSH
+Version `0.5.0` includes an active-repository GitHub link, an SSH
 sidebar, negotiated Shift+Enter input and IBM's official Bob avatar, bundled for
 offline use. It pins a prerelease xterm.js core; see
-[preview notes](docs/releases/v0.5.0-beta.2.md) for validation and limitations.
-The stable download above remains `0.4.0`. The preview excludes the unfinished
-in-app updater.
+[release notes](docs/releases/v0.5.0.md) for validation and limitations.
+Downloads include macOS Apple Silicon DMG/ZIP, Linux x64 AppImage and SHA-256
+checksums. Install updates manually; the in-app updater is still in development.
 
 ## Run
 
