@@ -5,6 +5,8 @@ import Explorer from './components/Explorer';
 import SettingsPanel from './components/SettingsPanel';
 import AgentCard from './components/AgentCard';
 import UpdateNotice from './components/UpdateNotice';
+import SshCard from './components/SshCard';
+import GitHubLink from './components/GitHubLink';
 import {FILE_PATH_MIME} from './lib/dropped-paths.mjs';
 import { basename, fonts, loadSettings, shortPath } from './settings';
 import type { AppInfo, Pane, Settings, Tab, TerminalHandle, UpdateAction, UpdateState } from './types';
@@ -107,6 +109,7 @@ export default function App() {
     setTabs(current => current.map(tab => ({...tab, panes: tab.panes.map(pane => pane.id === id ? {...pane, ...update} : pane)})));
   }, []);
   useEffect(() => window.desktop?.onAgent(({id, agent}) => updatePane(id, {agent})), [updatePane]);
+  useEffect(() => window.desktop?.onSsh(({id, ssh}) => updatePane(id, {ssh})), [updatePane]);
   const onHandle = useCallback((id: string, handle: TerminalHandle | null) => { if (handle) handles.current.set(id, handle); else handles.current.delete(id); }, []);
   const focusPane = (id: string) => setTabs(current => current.map(tab => tab.id === activeTabId ? {...tab, activePane: id} : tab));
   const closeTab = (id = activeTabId) => {
@@ -220,11 +223,13 @@ export default function App() {
           <div className="session-list">{tabs.map((tab, index) => <button key={tab.id} className={`session-item ${tab.id === activeTabId ? 'selected' : ''}`} onClick={() => setActiveTabId(tab.id)}><span className="session-line"/><TerminalSquare size={14}/><span>{basename(tab.panes.find(pane => pane.id === tab.activePane)?.shell || shell)}<small>{tab.panes.length > 1 ? ' / split' : ` / ${String(index + 1).padStart(2,'0')}`}</small></span><i className={tab.panes.some(pane => pane.status === 'running') ? 'live-dot' : 'idle-dot'}/></button>)}</div>
           <button className="new-session" onClick={() => newTab()}><Plus size={13}/><span>New session</span><kbd>⌘ T</kbd></button>
         </div>
-        <div className="harness-slot"><AgentCard agent={activePane?.agent || null}/></div>
+        <div className="harness-slot">{activePane?.ssh ? <SshCard ssh={activePane.ssh} agent={activePane.agent || null}/> : <AgentCard agent={activePane?.agent || null}/>}</div>
         <div className="sidebar-footer"><button onClick={() => showOverlay('settings')}><Settings2 size={16}/><span>Preferences</span><kbd>⌘ ,</kbd></button><button className="help-button" title="Keyboard shortcuts" onClick={() => showOverlay('help')}><CircleHelp size={16}/></button></div>
       </aside>
       <main className="main-workspace">
-        <header className="workspace-header"><div><div className="workspace-eyebrow"><span className="orange-square"/> YOUR SPACE. YOUR PACE.</div><div className="workspace-title"><h1>{basename(cwd) || 'My workspace'}<span>_</span></h1><span className="workspace-badge"><i className="live-dot"/> LOCAL</span></div></div><div className="workspace-header-actions"><button className="theme-toggle" type="button" title={settings.theme === 'light' ? 'Switch to dark mode' : 'Switch to light mode'} aria-label={settings.theme === 'light' ? 'Switch to dark mode' : 'Switch to light mode'} aria-pressed={settings.theme === 'dark'} onClick={toggleTheme}>{settings.theme === 'light' ? <Moon size={15}/> : <Sun size={15}/>}<span>{settings.theme === 'light' ? 'Dark mode' : 'Light mode'}</span></button><button className="open-folder-button" onClick={() => void chooseFolder()}><FolderOpen size={15}/><span>Open folder</span><ArrowUpRight size={14}/></button></div></header>
+        <header className="workspace-header"><div><div className="workspace-eyebrow"><span className="orange-square"/> YOUR SPACE. YOUR PACE.</div><div className="workspace-title"><h1>{basename(cwd) || 'My workspace'}<span>_</span></h1><span className="workspace-badge"><i className="live-dot"/> LOCAL</span></div></div><div className="workspace-header-actions">
+          {activePane && <GitHubLink key={`${activeTabId}:${activePane.id}:${activePane.cwd}`} cwd={activePane.cwd} refreshKey={refreshKey} onError={notify}/>}
+          <button className="theme-toggle" type="button" title={settings.theme === 'light' ? 'Switch to dark mode' : 'Switch to light mode'} aria-label={settings.theme === 'light' ? 'Switch to dark mode' : 'Switch to light mode'} aria-pressed={settings.theme === 'dark'} onClick={toggleTheme}>{settings.theme === 'light' ? <Moon size={15}/> : <Sun size={15}/>}<span>{settings.theme === 'light' ? 'Dark mode' : 'Light mode'}</span></button><button className="open-folder-button" onClick={() => void chooseFolder()}><FolderOpen size={15}/><span>Open folder</span><ArrowUpRight size={14}/></button></div></header>
         <div className="workspace-toolbar"><div className="breadcrumb"><Folder size={13}/><span>{home && cwd ? shortPath(cwd, home).split('/').slice(0,-1).join('/') || '~' : '~'}</span><ChevronRight size={12}/><strong>{basename(cwd) || 'workspace'}</strong></div><div className="toolbar-actions"><button title="Search terminal (⌘ F)" className={`icon-button ${search ? 'active' : ''}`} onClick={openSearch}><Search size={15}/></button><button title="Split pane (⌘ D). Click again to change orientation." className="icon-button" onClick={split}><PanelLeftClose size={16}/></button><span className="toolbar-divider"/><button title="Appearance settings" className="icon-button" onClick={() => showOverlay('settings')}><SlidersHorizontal size={15}/></button><button title={explorer ? 'Hide explorer (⌘ B)' : 'Show explorer (⌘ B)'} className={`icon-button ${explorer ? 'active' : ''}`} onClick={() => setExplorer(!explorer)}>{explorer ? <PanelRightClose size={16}/> : <PanelRightOpen size={16}/>}</button></div></div>
         <UpdateNotice state={update} busy={updateBusy} onAction={action => void updateAction(action)}/>
         <div className="work-area">

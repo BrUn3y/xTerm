@@ -21,6 +21,7 @@ contextBridge.exposeInMainWorld('desktop', {
   onCwd: callback => subscribe('terminal:cwd', callback),
   onExit: callback => subscribe('terminal:exit', callback),
   onAgent: callback => subscribe('terminal:agent', callback),
+  onSsh: callback => subscribe('terminal:ssh', callback),
   onFilesChanged: callback => subscribe('files:changed', callback),
   onCommand: callback => subscribe('app:command', callback),
   listFiles: directory => ipcRenderer.invoke('files:list', directory),

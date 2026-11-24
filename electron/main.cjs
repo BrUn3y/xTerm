@@ -8,8 +8,10 @@ const { promisify } = require('node:util');
 const pty = require('node-pty');
 const { createShellIntegration, CwdTracker, quote } = require('./shell.cjs');
 const { AgentMonitor, parseProcessTable, findHarness } = require('./agents.cjs');
+const { SshMonitor, findForegroundSsh, isLocalShellForeground } = require('./ssh.cjs');
 const {listDirectory, fileDetails, resolveLink} = require('./files.cjs');
 const { UpdateController, dismissalStore, registerUpdateIpc, restartDialog, installUpdate } = require('./updates.cjs');
+const {gitInfo} = require('./git.cjs');
 const exec = promisify(execFile);
 const sessions = new Map();
 let window;
@@ -23,8 +25,23 @@ async function refreshAgents() {
   try {
     const { stdout } = await exec('ps', ['-axo', 'pid=,ppid=,pgid=,tpgid=,stat=,pcpu=,args='], {timeout: 1600, maxBuffer: 4 * 1024 * 1024});
     const processes = parseProcessTable(stdout);
-    for (const session of sessions.values()) session.agentMonitor.setProcess(findHarness(session.process.pid, processes));
-  } catch { /* Keep existing state on a transient process-list failure. */ }
+    if (process.platform === 'linux') {
+      await Promise.all(processes.filter(value => /^(?:\S*\/)?ssh(?:\s|$)/.test(value.command)).map(async value => {
+        try { value.argv = (await fsp.readFile(`/proc/${value.pid}/cmdline`, 'utf8')).split('\0').filter(Boolean); }
+        catch { value.argv = []; }
+      }));
+    }
+    for (const session of sessions.values()) {
+      session.agentMonitor.setProcess(findHarness(session.process.pid, processes));
+      const ssh = findForegroundSsh(session.process.pid, processes);
+      if (sessions.get(session.id) !== session) continue;
+      if (ssh) session.atPrompt = false;
+      void session.sshMonitor.setProcess(ssh, {cwd: session.cwd});
+    }
+  } catch {
+    // A failed sample must not retain a stale SSH transport or timer.
+    for (const session of sessions.values()) session.sshMonitor.reset();
+  }
   finally { pollingAgents = false; }
 }
 
@@ -52,6 +69,7 @@ function destroySession(id) {
   if (!session) return;
   sessions.delete(id);
   session.agentMonitor?.reset();
+  session.sshMonitor?.reset();
   session.watcher?.close();
   clearTimeout(session.watchTimer);
   try { session.process.kill(); } catch { /* Already exited. */ }
@@ -106,18 +124,40 @@ ipcMain.handle('terminal:create', async (_event, options) => {
       cwd, env: { ...process.env, TERM: 'xterm-256color', COLORTERM: 'truecolor', TERM_PROGRAM: 'xTerm', TERM_PROGRAM_VERSION: app.getVersion(), ...integration.env },
     });
     const session = { id: options.id, process: processPty, cwd, integration, shell: path.basename(shellPath), atPrompt: path.basename(shellPath) === 'zsh' ? false : null };
+    let activityGeneration = 0;
     session.agentMonitor = new AgentMonitor(agent => send('terminal:agent', {id: session.id, agent}));
+    session.sshMonitor = new SshMonitor(ssh => send('terminal:ssh', {id: session.id, ssh}));
     sessions.set(session.id, session);
+    async function localForeground() {
+      if (process.platform === 'win32') return false;
+      try {
+        const {stdout} = await exec('ps', ['-p', String(processPty.pid), '-o', 'pid=,ppid=,pgid=,tpgid=,stat=,pcpu=,args='], {timeout: 1200});
+        const root = parseProcessTable(stdout)[0];
+        return sessions.get(session.id) === session && isLocalShellForeground(root, session.shell);
+      } catch { return false; }
+    }
+    session.localForeground = localForeground;
     const tracker = new CwdTracker(async newCwd => {
       if (newCwd === session.cwd || !sessions.has(session.id)) return;
+      const generation = activityGeneration;
       try {
+        if (!await localForeground()) return;
         const valid = await folder(newCwd);
-        if (!sessions.has(session.id)) return;
+        if (sessions.get(session.id) !== session || generation !== activityGeneration) return;
         session.cwd = valid;
         watchSession(session);
         send('terminal:cwd', { id: session.id, cwd: valid });
       } catch { /* The directory may have disappeared between prompts. */ }
-    }, atPrompt => { session.atPrompt = atPrompt; if (atPrompt) session.agentMonitor.reset(); });
+    }, atPrompt => {
+      if (!atPrompt) { activityGeneration++; session.atPrompt = false; return; }
+      const generation = activityGeneration;
+      // Remote shells can emit identical OSC markers. Only the local foreground
+      // shell may clear SSH/harness context or authorize local folder navigation.
+      void localForeground().then(local => {
+        if (!local || generation !== activityGeneration) return;
+        session.atPrompt = true; session.agentMonitor.reset(); session.sshMonitor.reset();
+      });
+    });
     processPty.onData(data => { session.agentMonitor.observeOutput(data); tracker.push(data); send('terminal:data', { id: session.id, data }); });
     processPty.onExit(({ exitCode, signal }) => { send('terminal:exit', { id: session.id, exitCode, signal }); destroySession(session.id); });
     watchSession(session);
@@ -146,7 +186,8 @@ ipcMain.handle('terminal:navigate', async (_event, { id, directory }) => {
   const session = sessions.get(id);
   if (!session) throw new Error('The session is no longer active.');
   const target = await folder(directory);
-  if (session.atPrompt === false) throw new Error('A process is running. Return to the prompt or open another tab to change folders.');
+  if (session.atPrompt === false || process.platform !== 'win32' && !await session.localForeground()) throw new Error('A process is running. Return to the prompt or open another tab to change folders.');
+  if (sessions.get(id) !== session) throw new Error('The session is no longer active.');
   const command = session.shell === 'powershell.exe' ? `Set-Location -LiteralPath ${quote(target)}` : session.shell === 'cmd.exe' ? `cd /d "${target}"` : `cd -- ${quote(target)}`;
   session.process.write(`\x15${command}\r`);
 });
@@ -165,13 +206,8 @@ ipcMain.handle('files:reveal', async (_event, value) => {
   await fsp.access(value); shell.showItemInFolder(value);
 });
 ipcMain.handle('git:info', async (_event, directory) => {
-  const cwd = await folder(directory);
   try {
-    const [{ stdout: branch }, { stdout: status }] = await Promise.all([
-      exec('git', ['branch', '--show-current'], { cwd, timeout: 2500, maxBuffer: 65536 }),
-      exec('git', ['status', '--porcelain', '-uno'], { cwd, timeout: 2500, maxBuffer: 262144 }),
-    ]);
-    return { branch: branch.trim() || 'detached', changed: status.trim() ? status.trim().split('\n').length : 0 };
+    return await gitInfo(await folder(directory));
   } catch { return null; }
 });
 ipcMain.handle('app:external', async (_event, url) => {

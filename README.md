@@ -4,6 +4,12 @@ A desktop terminal built with Electron, React, TypeScript, xterm.js, and node-pt
 
 [Website & screenshots](https://brun3y.github.io/xTerm/) · [Download for Mac (Apple Silicon)](https://github.com/BrUn3y/xTerm/releases/download/v0.4.0/xTerm-0.4.0-arm64.dmg) · [Release notes](https://github.com/BrUn3y/xTerm/releases)
 
+The `0.5.0-beta.1` preview adds an active-repository GitHub link, an SSH sidebar
+and negotiated Shift+Enter input. It pins a prerelease xterm.js core; see
+[preview notes](docs/releases/v0.5.0-beta.1.md) for validation and limitations.
+The stable download above remains `0.4.0`. This preview does not include the
+unfinished in-app updater or the official IBM Bob avatar.
+
 ## Run
 
 Requires Node.js 22.12 or later. On macOS, native modules require Xcode Command Line Tools (`xcode-select --install`).
@@ -127,6 +133,11 @@ npm run build       # Strict TypeScript checking and production compilation
 ```
 
 If you change Electron versions or `node-pty` fails to load, run `npm run rebuild`. PTY tests use Electron's binary to match the native ABI. Shell tests require zsh or bash and are skipped if neither is present.
+
+The draft Shift+Enter work uses negotiated Kitty keyboard reporting, not a
+global newline remapping. See [keyboard validation](docs/keyboard-validation.md)
+for the real Codex comparison, native test commands and the blocking upstream
+stack-restoration failure.
 
 ## Project structure
 

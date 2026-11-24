@@ -62,6 +62,12 @@
 .terminal-artwork { opacity: .28; }
 .theme-dark .terminal-artwork { opacity: .14; }
 .workspace-header-actions { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+.workspace-header > div:first-child { min-width: 0; }
+.workspace-title h1 { min-width: 0; }
+.github-link { position: relative; display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; flex-shrink: 0; padding: 0; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 4px; }
+.github-link:hover { color: var(--ink); background: var(--hover); border-color: var(--line-strong); }
+.github-link-tooltip { display: none; position: absolute; top: calc(100% + 8px); right: 0; z-index: 10; width: max-content; max-width: min(320px, 60vw); padding: 6px 9px; border: 1px solid var(--line-strong); border-radius: 4px; background: var(--surface); color: var(--ink); font: 10px var(--mono); letter-spacing: 0; overflow-wrap: anywhere; pointer-events: none; }
+.github-link:hover .github-link-tooltip, .github-link:focus-visible .github-link-tooltip { display: block; }
 .theme-toggle { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 10px 12px; min-height: 36px; color: var(--secondary); background: var(--surface); border: 1px solid var(--line); border-radius: 4px; font-size: 10px; }
 .theme-toggle svg { color: var(--orange); }
 .theme-toggle:hover { background: var(--hover); border-color: var(--line-strong); color: var(--ink); }
@@ -121,6 +127,27 @@
 @container harness-panel (max-height:200px) { .agent-card { padding: 9px 11px; gap: 6px; }.agent-identity > div:last-child > span { display: none; }.agent-hero-art { display: none; }.agent-model { padding: 6px 8px; }.agent-model > strong { margin-top: 4px; }.agent-card > footer { padding-top: 6px; }.agent-card-top > span { font-size: 7px; } }
 @keyframes agent-signal { 0%,100% { box-shadow: 0 0 0 0 #efffd433; } 50% { box-shadow: 0 0 0 4px #efffd400; } }
 @keyframes agent-level { from { transform: scaleY(.25); opacity: .5; } to { transform: scaleY(1); opacity: 1; } }
+
+.ssh-card { display: flex; flex-direction: column; gap: 12px; width: 100%; height: 100%; min-height: 0; padding: 13px; background: var(--orange); color: #20221f; overflow: hidden; }
+.harness-slot:has(> .ssh-card) { min-height: 194px; }
+@media(max-height:670px) { .sidebar:has(.ssh-card) > .brand { height: 52px; min-height: 52px; }.sidebar:has(.ssh-card) > .sidebar-nav { padding-bottom: 6px; }.sidebar:has(.ssh-card) .nav-item { height: 32px; }.sidebar:has(.ssh-card) > .sidebar-section:not(.sessions-section) { padding-bottom: 6px; }.sidebar:has(.ssh-card) .workspace-item { padding: 5px 8px; }.sidebar:has(.ssh-card) .workspace-icon { width: 24px; height: 24px; }.sidebar:has(.ssh-card) .sidebar-label { height: 20px; margin-bottom: 4px; }.sidebar:has(.ssh-card) .session-item { height: 30px; }.sidebar:has(.ssh-card) .new-session { padding-top: 7px; padding-bottom: 7px; } }
+.ssh-card header { display: flex; align-items: center; justify-content: space-between; gap: 6px; font: 10px var(--mono); flex-shrink: 0; }
+.ssh-card header > span:first-child, .ssh-card footer > span { display: flex; align-items: center; gap: 5px; }
+.ssh-card header > span:last-child { font-size: 10px; background: #293025; color: #fff8ed; padding: 4px 6px; border-radius: 3px; }
+.ssh-target { flex-shrink: 0; min-width: 0; }
+.ssh-target > span { font: 8px var(--mono); }
+.ssh-target h3 { margin: 5px 0 0; font-size: 18px; line-height: 1.2; letter-spacing: 0; overflow-wrap: anywhere; max-height: 65px; overflow: auto; }
+.ssh-metadata { min-height: 0; overflow-y: auto; scrollbar-width: thin; }
+.ssh-metadata dl { margin: 0; font: 10px/1.5 var(--mono); }
+.ssh-metadata dt { font-size: 9px; margin-top: 7px; color: #20221f; }
+.ssh-metadata dt:first-child { margin-top: 0; }
+.ssh-metadata dd { margin: 0; overflow-wrap: anywhere; }
+.ssh-card footer { margin-top: auto; display: flex; align-items: center; justify-content: space-between; gap: 6px; border-top: 1px solid #20221f70; padding-top: 8px; flex-shrink: 0; font: 8px var(--mono); }
+.ssh-card footer > span { min-width: 0; font-size: 8px; }
+.ssh-card footer time { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.ssh-harness { display: flex; flex-direction: column; gap: 4px; margin-top: 12px; border-top: 1px solid #20221f70; padding-top: 9px; font: 10px var(--mono); overflow-wrap: anywhere; }
+.ssh-harness > span:first-child { display: flex; gap: 5px; align-items: center; font-size: 8px; }
+@container harness-panel (max-height:200px) { .ssh-card { padding: 9px 11px; gap: 7px; }.ssh-target h3 { font-size: 15px; max-height: 36px; }.ssh-target > span { font-size: 7px; } }
 
 /* Each texture has its own restrained motion over the terminal surface. */
 .terminal-workspace { --motion-accent: var(--secondary); }
