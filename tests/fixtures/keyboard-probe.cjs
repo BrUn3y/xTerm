@@ -11,6 +11,8 @@ const modes = {
   restored: '\x1b[>1u\x1b[?1049h\x1b[>0u\x1b[?1049l',
   reset: '\x1b[>1u\x1bc',
   restoreSet: '\x1b[=1u\x1b[>0u\x1b[<u',
+  restoreNestedSet: '\x1b[>1u\x1b[=7u\x1b[>0u\x1b[<u',
+  overPop: '\x1b[>1u\x1b[>7u\x1b[<3u',
 };
 process.stdout.write(`${modes[mode] ?? `\x1b[>${mode}u`}\x1b[?u\r\nPROBE_READY\r\n`);
 process.stdin.on('data', data => {

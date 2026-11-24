@@ -102,8 +102,15 @@ try {
       await stopProbe();
     }
     if (process.env.XTERM_TEST_STACK_RESTORE === '1') {
+      // Kitty resets flags when pop empties the stack, even after a prior set.
       await probe('restoreSet');
+      await press('Shift+Enter', '\r');
+      await stopProbe();
+      await probe('restoreNestedSet');
       await press('Shift+Enter', '\x1b[13;2u');
+      await stopProbe();
+      await probe('overPop');
+      await press('Shift+Enter', '\r');
       await stopProbe();
     }
     await probe(11);

@@ -1,7 +1,7 @@
 # Shift+Enter Validation (Issue #2)
 
-Draft: do not merge until the upstream stack-restoration failure below and native
-macOS validation are resolved. This is not a universal Shift+Enter remapping.
+This is not a universal Shift+Enter remapping. The pinned terminal core is a
+prerelease; physical macOS keyboard and IME validation remains outstanding.
 
 ## Implementation
 
@@ -82,14 +82,17 @@ likewise proves process detection, not real coding-harness input behavior.
   press/release, reserved shortcuts and independent panes: covered by native
   protocol tests and passed for the main validation paths.
 - Real Codex baseline/fixed comparison: passed as described above.
-- test:keyboard-stack: FAILED. CSI =1u sets flags to 1; CSI >0u pushes that
-  state; CSI <u incorrectly resets flags to 0 instead of restoring 1 when the
-  stack becomes empty. Shift+Enter becomes CR. The pinned upstream
-  InputHandler.kittyKeyboardPop has an unconditional empty-stack reset.
+- The initial test:keyboard-stack expectation was incorrect, not an upstream
+  defect. The official Kitty protocol explicitly requires resetting all flags
+  when a pop empties the stack. Consequently CSI =1u / CSI >0u / CSI <u must
+  produce legacy CR for Shift+Enter.
+- The corrected required gate retains the empty-stack case and adds restoration
+  after set with a nonempty outer stack, plus a pop beyond the stack depth.
+  No upstream code, keyboard byte conversion or protocol implementation changed.
 
-Do not remove/weaken the failing gate or mark this draft ready. Resolve the
-upstream defect with a reviewed upstream version or explicitly reviewed patch,
-then rerun both required native gates and the real Codex comparison.
+Protocol source:
+https://github.com/kovidgoyal/kitty/blob/master/docs/keyboard-protocol.rst
+(Progressive enhancement, push/pop and independent screen stacks).
 
 Remaining: original user's harness/version, physical and packaged Apple Silicon
 macOS keyboard behavior, IME/dead-key and menu accelerator checks, additional
