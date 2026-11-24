@@ -24,7 +24,9 @@
     "package": "npm run build && electron-builder --dir",
     "dist": "npm run build && electron-builder",
     "test": "node --test tests/*.test.cjs",
-    "test:pty": "node scripts/test-pty.mjs"
+    "test:pty": "node scripts/test-pty.mjs",
+    "test:bob-artwork": "node scripts/check-bob-artwork.mjs",
+    "test:bob-ui": "node scripts/test-bob-ui.mjs"
   },
   "dependencies": {
     "@fontsource-variable/dm-sans": "^5.2.8",
@@ -47,6 +49,7 @@
     "@vitejs/plugin-react": "^5.1.0",
     "electron": "^45.4.1",
     "electron-builder": "^26.0.12",
+    "playwright": "1.65.0",
     "typescript": "^5.9.3",
     "vite": "^7.2.0"
   },
@@ -68,6 +71,10 @@
       {
         "from": "build/icon.png",
         "to": "icon.png"
+      },
+      {
+        "from": "src/assets/NOTICE.md",
+        "to": "assets/NOTICE.md"
       }
     ],
     "mac": {

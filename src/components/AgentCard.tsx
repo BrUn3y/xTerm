@@ -2,13 +2,16 @@ import { useEffect, useState } from 'react';
 import { Activity, ArrowUpRight, Bot, ChevronRight, Cpu, Sparkles } from 'lucide-react';
 import openaiLogo from '../assets/openai.svg';
 import claudeLogo from '../assets/claude.svg';
+import { bobArtwork } from '../assets/bob-artwork';
 import type { AgentInfo } from '../types';
 
 const labels = {working: 'Working', ready: 'Ready for input', attention: 'Needs attention', running: 'Running'};
 function AgentLogo({agent}: {agent: AgentInfo}) {
   if (agent.provider === 'codex') return <img src={openaiLogo} alt="OpenAI"/>;
   if (agent.provider === 'claude') return <img src={claudeLogo} alt="Claude"/>;
-  if (agent.provider === 'bob') return <span className="bob-avatar" aria-label="Bob">b<span>_</span></span>;
+  if (agent.provider === 'bob') return bobArtwork
+    ? <img className="bob-artwork" src={bobArtwork} alt="IBM Bob"/>
+    : <span className="bob-avatar" aria-label="Bob">b<span>_</span></span>;
   if (agent.provider === 'gemini') return <Sparkles size={27}/>;
   return <Bot size={28}/>;
 }
