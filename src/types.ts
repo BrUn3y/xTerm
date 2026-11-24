@@ -4,7 +4,8 @@ export interface AppInfo {
 }
 export interface FileEntry { name: string; path: string; directory: boolean; symlink: boolean; size: number | null; modified: string | null; hidden: boolean }
 export interface FileListing { cwd: string; parent: string; entries: FileEntry[]; total: number }
-export interface GitInfo { branch: string; changed: number }
+export interface GitHubRepository { owner: string; repo: string; url: string }
+export interface GitInfo { branch: string; changed: number; github: GitHubRepository | null }
 export type PaneStatus = 'connecting' | 'running' | 'exited' | 'error';
 export interface AgentInfo {
   provider: string; name: string; model: string | null;

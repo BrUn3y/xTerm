@@ -30,7 +30,8 @@ export default function Explorer({cwd, home, settings, onNavigate, onHidden, onE
     setLoading(true); setError('');
     setSelected(null);
     void window.desktop.listFiles(cwd).then(result => { if (alive) setListing(result); }).catch(err => { if (alive) { setError(String(err).replace(/^Error:.*?: /, '')); setListing(null); } }).finally(() => { if (alive) setLoading(false); });
-    void window.desktop.gitInfo(cwd).then(result => { if (alive) setGit(result); });
+    setGit(null);
+    void window.desktop.gitInfo(cwd).then(result => { if (alive) setGit(result); }).catch(() => { if (alive) setGit(null); });
     return () => { alive = false; };
   }, [cwd, refresh, refreshKey]);
   useEffect(() => { setQuery(''); }, [cwd]);
