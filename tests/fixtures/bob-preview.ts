@@ -4,12 +4,12 @@ const listeners = new Set<(event: {id: string; agent: AgentInfo | null}) => void
 const unsubscribe = () => () => {};
 window.desktop = {
   info: async () => ({home: '/home/test', cwd: '/work/xTerm', shell: '/bin/bash',
-    platform: 'linux', hostname: 'preview', username: 'test', version: '0.4.0',
+    platform: 'linux', hostname: 'preview', username: 'test', version: '0.5.0-beta.1',
     shells: ['/bin/bash']}),
   setAppearance: () => {},
   onAgent: callback => {listeners.add(callback); return () => {listeners.delete(callback);};},
   onData: unsubscribe, onCwd: unsubscribe, onExit: unsubscribe,
-  onCommand: unsubscribe, onFilesChanged: unsubscribe,
+  onCommand: unsubscribe, onFilesChanged: unsubscribe, onSsh: unsubscribe,
   createTerminal: async value => {
     setTimeout(() => {
       for (const callback of listeners) callback({id: value.id, agent: {

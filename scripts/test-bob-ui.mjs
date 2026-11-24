@@ -26,6 +26,7 @@ try {
     await page.goto(url);
     const card = page.getByRole('region', {name: 'Bob harness activity'});
     await card.waitFor();
+    await card.getByRole('img', {name: 'IBM Bob', exact: true}).evaluate(image => image.decode());
     for (const theme of ['light', 'dark']) {
       if (theme === 'dark') await page.getByRole('button', {name: 'Switch to dark mode', exact: true}).click();
       await card.scrollIntoViewIfNeeded();
@@ -46,6 +47,7 @@ try {
           width: avatar.clientWidth, avatarHeight: avatar.clientHeight,
           theme: document.documentElement.dataset.theme,
           image: image && {source: image.currentSrc, loaded: image.complete && image.naturalWidth > 0,
+            width: image.naturalWidth, height: image.naturalHeight,
             filter: style.filter, fit: style.objectFit, alt: image.alt},
           fallback: !!element.querySelector('.bob-avatar'),
         };
@@ -54,18 +56,17 @@ try {
       assert.equal(geometry.visible, true, 'The whole card is visible after sidebar scroll');
       assert.equal(geometry.width, geometry.avatarHeight, 'Avatar remains square');
       assert.equal(geometry.theme, theme);
-      if (geometry.image) {
-        assert.equal(geometry.image.loaded, true);
-        assert.equal(new URL(geometry.image.source).origin, new URL(url).origin);
-        assert.equal(geometry.image.filter, 'none');
-        assert.equal(geometry.image.fit, 'contain');
-        assert.equal(geometry.image.alt, 'IBM Bob');
-        assert.equal(geometry.fallback, false);
-      } else {
-        assert.equal(geometry.fallback, true);
-      }
+      assert.ok(geometry.image, 'Official Bob artwork is required');
+      assert.equal(geometry.image.loaded, true);
+      assert.equal(new URL(geometry.image.source).origin, new URL(url).origin);
+      assert.equal(geometry.image.filter, 'none');
+      assert.equal(geometry.image.fit, 'contain');
+      assert.equal(geometry.image.alt, 'IBM Bob');
+      assert.equal(geometry.image.width, 512);
+      assert.equal(geometry.image.height, 512);
+      assert.equal(geometry.fallback, false);
       await page.screenshot({path: path.join(output, `${viewport.width}-${viewport.height}-${theme}.png`)});
-      console.log(`PASS ${theme} ${viewport.width}x${viewport.height}, card ${geometry.height}px (${geometry.height >= 280 ? 'expanded' : 'compact'}): ${geometry.image ? 'local artwork loaded' : 'existing monogram; official artwork BLOCKED'}`);
+      console.log(`PASS ${theme} ${viewport.width}x${viewport.height}, card ${geometry.height}px (${geometry.height >= 280 ? 'expanded' : 'compact'}): official local artwork loaded`);
     }
     assert.deepEqual(remote, [], 'No remote network requests from preview');
     assert.deepEqual(errors, []);

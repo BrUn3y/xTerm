@@ -27,6 +27,7 @@
     "test:pty": "node scripts/test-pty.mjs",
     "test:bob-artwork": "node scripts/check-bob-artwork.mjs",
     "test:bob-ui": "node scripts/test-bob-ui.mjs",
+    "test:bob-desktop": "node scripts/test-bob-desktop.mjs",
     "test:keyboard-desktop": "node scripts/test-keyboard-desktop.mjs",
     "test:keyboard-stack": "node scripts/test-keyboard-stack.mjs",
     "test:github-ui": "node scripts/test-github-ui.mjs",
