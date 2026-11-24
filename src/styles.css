@@ -108,7 +108,7 @@
 .agent-avatar img { width: 63%; height: 63%; filter: brightness(0) invert(1); }
 .agent-avatar > svg { width: 67%; height: 67%; }
 .agent-avatar.provider-claude { background: #fff2df; color: #b8492f; }.agent-avatar.provider-claude img { width: 74%; height: 74%; filter: none; }
-.bob-avatar { font-size: clamp(28px,11cqh,62px); font-weight: 650; letter-spacing: -3px; line-height: 1; margin-top: -3px; }.bob-avatar > span { font-size: .7em; color: #ff9165; margin-left: 2px; }
+.agent-avatar.provider-bob img.bob-artwork { width: 90%; height: 90%; object-fit: contain; object-position: center; filter: none; }
 .agent-identity > div:last-child { min-width: 0; }
 .agent-identity > div:last-child > span { display: block; font: 6px var(--mono); letter-spacing: .5px; color: #ffe8d3bd; margin: 0 0 6px 1px; }
 .agent-identity h3 { margin: 0; font-size: clamp(15px,5.5cqh,30px); line-height: 1.05; font-weight: 650; letter-spacing: -.7px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

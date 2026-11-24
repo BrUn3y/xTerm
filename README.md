@@ -7,7 +7,7 @@ A desktop terminal built with Electron, React, TypeScript, xterm.js, and node-pt
 The `0.5.0-beta.1` preview adds an active-repository GitHub link, an SSH sidebar
 and negotiated Shift+Enter input. It pins a prerelease xterm.js core; see
 [preview notes](docs/releases/v0.5.0-beta.1.md) for validation and limitations.
-The stable download above remains `0.4.0`. This preview does not include the
+The stable download above remains `0.4.0`. The published preview does not include the
 unfinished in-app updater or the official IBM Bob avatar.
 
 ## Run
@@ -49,6 +49,10 @@ JetBrains Mono and IBM Plex Mono are bundled for offline use. Menlo and SF Mono 
 ## Harness panel
 
 The orange **HARNESS** card follows the active pane. It fills the remaining sidebar height, expands its identity area when there is room, and compacts as sessions are added. Long session lists scroll once the card reaches its minimum size. When a foreground coding harness is detected, the poster changes to a live instrument panel with its identity, logo or monogram, model, elapsed session time, and activity status. Exiting the harness returns to the poster. Switching tabs or panes shows that session's agent.
+
+Source builds use IBM's official Bob artwork in the Bob card. The image is bundled
+locally for offline use and retains its proportions and colors in both themes.
+See [artwork source and validation](docs/bob-artwork.md).
 
 Automatic process detection covers Codex, Claude Code, Bob, Gemini CLI, OpenCode, Aider, Goose, GitHub Copilot, Cursor Agent, Amp, Cline, Droid, Qwen Code, Continue, Pi, OpenHands, and custom executables ending in `-agent` or `-harness`. Detection is limited to descendants in the terminal's foreground process group, so unrelated or background agents do not appear in the card.
 
