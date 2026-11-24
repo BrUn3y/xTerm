@@ -14,7 +14,16 @@ export interface AgentInfo {
   activitySource: 'process' | 'terminal' | 'reported';
   pid: number | null; startedAt: number;
 }
-export interface Pane { id: string; cwd: string; shell: string; status: PaneStatus; pid?: number; agent?: AgentInfo | null }
+export interface SshInfo {
+  pid: number; target: string; configuredHost: string | null; remoteHostname: string | null;
+  user: string | null; port: number | null; jumpHost: string | null;
+  endpoint: {address: string; port: number} | null;
+  transportEndpoint: {address: string; port: number} | null;
+  configStatus: 'static' | 'unavailable'; routing: 'direct' | 'proxy' | 'unknown';
+  status: 'connecting' | 'unknown'; statusDetail: string;
+  startedAt: number; durationKind: 'observed-process';
+}
+export interface Pane { id: string; cwd: string; shell: string; status: PaneStatus; pid?: number; agent?: AgentInfo | null; ssh?: SshInfo | null }
 export interface Tab { id: string; panes: Pane[]; activePane: string }
 export interface Settings {
   font: string; fontSize: number; lineHeight: number; cursor: 'block' | 'bar' | 'underline';
@@ -38,6 +47,7 @@ export interface Desktop {
   onCwd(callback: (event: {id: string; cwd: string}) => void): () => void;
   onExit(callback: (event: {id: string; exitCode: number}) => void): () => void;
   onAgent(callback: (event: {id: string; agent: AgentInfo | null}) => void): () => void;
+  onSsh(callback: (event: {id: string; ssh: SshInfo | null}) => void): () => void;
   onFilesChanged(callback: (event: {id: string; cwd: string}) => void): () => void;
   onCommand(callback: (command: string) => void): () => void;
   listFiles(directory: string): Promise<FileListing>;
