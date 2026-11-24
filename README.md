@@ -28,6 +28,20 @@ Build output is written to `release/`. On Apple Silicon, the default application
 
 Local builds are not notarized for public distribution. Publishing requires configuring Apple signing and notarization. Development does not require signing credentials.
 
+## In-app updates (under review)
+
+Packaged builds can check stable GitHub Releases from the titlebar update button,
+command palette or Help menu. A persistent notice offers Download update and
+Later, shows progress, and requires native confirmation before Restart and
+update. Running terminal processes will end and are not restored; preferences
+and saved folders are retained in the existing user-data location.
+
+This implementation is **not production-ready** until a real upgrade between two
+signed macOS Apple Silicon builds is validated. Existing v0.4.0 users need one
+manual installation of the first signed updater-enabled release. Windows NSIS
+and Linux AppImage updates are configured but unvalidated. Development updates
+are disabled. See [release prerequisites, artifacts and mandatory validation](docs/updating.md).
+
 ## Appearance
 
 The entire interface is in English, including application menus, preferences, tooltips, and application error messages. File names and shell output come from the filesystem and your existing shell configuration.
