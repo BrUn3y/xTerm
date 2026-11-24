@@ -35,7 +35,7 @@ Object.assign(window, {
     write: () => {}, resize: () => {}, closeTerminal: async (id: string) => {terminals.delete(id);},
     navigate: async (id: string, cwd: string) => {terminals.get(id)!.cwd = cwd; emit('cwd', {id, cwd});},
     onData: subscribe('data'), onCwd: subscribe('cwd'), onExit: subscribe('exit'),
-    onAgent: subscribe('agent'), onFilesChanged: subscribe('files'), onCommand: subscribe('command'),
+    onAgent: subscribe('agent'), onSsh: subscribe('ssh'), onFilesChanged: subscribe('files'), onCommand: subscribe('command'),
     listFiles: async (cwd: string) => ({cwd, parent: '/projects', entries: [], total: 0}),
     gitInfo: (cwd: string) => manual ? new Promise((resolve, reject) => pending.push({cwd, resolve, reject})) : Promise.resolve(git(cwd)),
     chooseFolder: async () => nextFolder || null, openExternal: async (url: string) => {external.push(url);},
