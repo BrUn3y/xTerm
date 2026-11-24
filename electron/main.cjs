@@ -10,6 +10,7 @@ const { createShellIntegration, CwdTracker, quote } = require('./shell.cjs');
 const { AgentMonitor, parseProcessTable, findHarness } = require('./agents.cjs');
 const { SshMonitor, findForegroundSsh, isLocalShellForeground } = require('./ssh.cjs');
 const {listDirectory, fileDetails, resolveLink} = require('./files.cjs');
+const {gitInfo} = require('./git.cjs');
 const exec = promisify(execFile);
 const sessions = new Map();
 let window;
@@ -203,13 +204,8 @@ ipcMain.handle('files:reveal', async (_event, value) => {
   await fsp.access(value); shell.showItemInFolder(value);
 });
 ipcMain.handle('git:info', async (_event, directory) => {
-  const cwd = await folder(directory);
   try {
-    const [{ stdout: branch }, { stdout: status }] = await Promise.all([
-      exec('git', ['branch', '--show-current'], { cwd, timeout: 2500, maxBuffer: 65536 }),
-      exec('git', ['status', '--porcelain', '-uno'], { cwd, timeout: 2500, maxBuffer: 262144 }),
-    ]);
-    return { branch: branch.trim() || 'detached', changed: status.trim() ? status.trim().split('\n').length : 0 };
+    return await gitInfo(await folder(directory));
   } catch { return null; }
 });
 ipcMain.handle('app:external', async (_event, url) => {
