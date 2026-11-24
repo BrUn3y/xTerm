@@ -7,7 +7,7 @@ A desktop terminal built with Electron, React, TypeScript, xterm.js, and node-pt
 The `0.5.0-beta.1` preview adds an active-repository GitHub link, an SSH sidebar
 and negotiated Shift+Enter input. It pins a prerelease xterm.js core; see
 [preview notes](docs/releases/v0.5.0-beta.1.md) for validation and limitations.
-The stable download above remains `0.4.0`. This preview does not include the
+The stable download above remains `0.4.0`. The published preview does not include the
 unfinished in-app updater or the official IBM Bob avatar.
 
 ## Run
@@ -33,6 +33,21 @@ npm run dist      # Build macOS DMG/ZIP, Windows NSIS, or Linux AppImage
 Build output is written to `release/`. On Apple Silicon, the default application path is `release/mac-arm64/xTerm.app`. Installers are generated locally with `npm run dist`.
 
 Local builds are not notarized for public distribution. Publishing requires configuring Apple signing and notarization. Development does not require signing credentials.
+
+## In-app updates (under review)
+
+This branch contains a draft updater implementation. Packaged builds can check
+stable GitHub Releases from the titlebar update button,
+command palette or Help menu. A persistent notice offers Download update and
+Later, shows progress, and requires native confirmation before Restart and
+update. Running terminal processes will end and are not restored; preferences
+and saved folders are retained in the existing user-data location.
+
+This implementation is **not production-ready** until a real upgrade between two
+signed macOS Apple Silicon builds is validated. Existing v0.4.0 users need one
+manual installation of the first signed updater-enabled release. Windows NSIS
+and Linux AppImage updates are configured but unvalidated. Development updates
+are disabled. See [release prerequisites, artifacts and mandatory validation](docs/updating.md).
 
 ## Appearance
 

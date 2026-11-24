@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, dialog, shell, Menu, nativeTheme } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, shell, Menu, nativeTheme, autoUpdater: nativeUpdater } = require('electron');
 const path = require('node:path');
 const os = require('node:os');
 const fs = require('node:fs');
@@ -10,12 +10,14 @@ const { createShellIntegration, CwdTracker, quote } = require('./shell.cjs');
 const { AgentMonitor, parseProcessTable, findHarness } = require('./agents.cjs');
 const { SshMonitor, findForegroundSsh, isLocalShellForeground } = require('./ssh.cjs');
 const {listDirectory, fileDetails, resolveLink} = require('./files.cjs');
+const { UpdateController, dismissalStore, registerUpdateIpc, restartDialog, installUpdate } = require('./updates.cjs');
 const {gitInfo} = require('./git.cjs');
 const exec = promisify(execFile);
 const sessions = new Map();
 let window;
 let pollingAgents = false;
 let agentPoll;
+let updates;
 
 async function refreshAgents() {
   if (pollingAgents || !sessions.size || process.platform === 'win32') return;
@@ -219,6 +221,33 @@ ipcMain.on('window:action', (_event, action) => {
 });
 
 app.whenReady().then(() => {
+  const updateEnabled = app.isPackaged && !process.env.XTERM_DEV_URL &&
+    (process.platform !== 'linux' || !!process.env.APPIMAGE);
+  let updater, initializationFailed = false;
+  const updateOptions = {
+    installed: app.getVersion(), platform: process.platform, arch: process.arch,
+    unavailableReason: !app.isPackaged || process.env.XTERM_DEV_URL
+      ? 'Updates are disabled in development and web previews. Install a signed packaged release.'
+      : 'Updates require the installed AppImage. This package cannot update itself.',
+    store: dismissalStore(app.getPath('userData')),
+    notify: state => send('updates:state-changed', state),
+    install: () => installUpdate(updater, nativeUpdater, process.platform),
+    confirmRestart: async version => {
+      if (!window || window.isDestroyed()) return false;
+      const result = await dialog.showMessageBox(window, restartDialog(version, sessions.size));
+      return result.response === 1;
+    },
+  };
+  try {
+    updater = updateEnabled ? require('electron-updater').autoUpdater : null;
+    updates = new UpdateController({ ...updateOptions, updater, enabled: updateEnabled });
+  } catch {
+    initializationFailed = true;
+  }
+  if (initializationFailed) updates = new UpdateController({ ...updateOptions, updater: null, enabled: false,
+    unavailableReason: 'The updater could not be initialized. Your terminals remain available. Try relaunching later.' });
+  registerUpdateIpc(ipcMain, updates, () => window);
+  updates.start();
   agentPoll = setInterval(() => void refreshAgents(), 900);
   agentPoll.unref();
   Menu.setApplicationMenu(Menu.buildFromTemplate([
@@ -232,9 +261,10 @@ app.whenReady().then(() => {
     { label: 'Edit', submenu: [{ role: 'undo', label: 'Undo' }, { role: 'redo', label: 'Redo' }, { type: 'separator' }, { role: 'cut', label: 'Cut' }, { role: 'copy', label: 'Copy' }, { role: 'paste', label: 'Paste' }, { role: 'selectAll', label: 'Select All' }] },
     { label: 'View', submenu: [{ label: 'Search terminal', accelerator: 'CmdOrCtrl+F', click: () => send('app:command', 'search') }, { label: 'Command palette', accelerator: 'CmdOrCtrl+K', click: () => send('app:command', 'palette') }, { role: 'togglefullscreen', label: 'Toggle Full Screen' }, { role: 'toggleDevTools', label: 'Toggle Developer Tools' }] },
     { label: 'Window', submenu: [{ role: 'minimize', label: 'Minimize' }, { role: 'zoom', label: 'Zoom' }, { role: 'front', label: 'Bring All to Front' }] },
+    { label: 'Help', submenu: [{ label: 'Check for updates', click: () => send('app:command', 'updates') }] },
   ]));
   createWindow();
   app.on('activate', () => { if (!BrowserWindow.getAllWindows().length) createWindow(); });
 });
 app.on('window-all-closed', () => { if (process.platform !== 'darwin') app.quit(); });
-app.on('before-quit', () => { clearInterval(agentPoll); for (const id of sessions.keys()) destroySession(id); });
+app.on('before-quit', () => { updates?.dispose(); clearInterval(agentPoll); for (const id of sessions.keys()) destroySession(id); });

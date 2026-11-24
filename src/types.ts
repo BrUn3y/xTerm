@@ -2,6 +2,12 @@ export interface AppInfo {
   home: string; cwd: string; shell: string; platform: string; hostname: string;
   username: string; version: string; shells: string[];
 }
+export type UpdateAction = 'check' | 'download' | 'later' | 'restart';
+export interface UpdateState {
+  status: 'idle' | 'checking' | 'up-to-date' | 'unavailable' | 'available' | 'downloading' | 'ready' | 'installing' | 'error';
+  installedVersion: string; version: string | null; releaseUrl: string | null;
+  progress: number | null; dismissed: boolean; message: string;
+}
 export interface FileEntry { name: string; path: string; directory: boolean; symlink: boolean; size: number | null; modified: string | null; hidden: boolean }
 export interface FileListing { cwd: string; parent: string; entries: FileEntry[]; total: number }
 export interface GitHubRepository { owner: string; repo: string; url: string }
@@ -36,6 +42,9 @@ export interface TerminalHandle {
 }
 export interface Desktop {
   info(): Promise<AppInfo>;
+  updateState(): Promise<UpdateState>;
+  updateAction(action: UpdateAction): Promise<UpdateState>;
+  onUpdateState(callback: (state: UpdateState) => void): () => void;
   setAppearance(theme: Settings['theme']): void;
   droppedFilePaths(files: File[]): string[];
   reportTerminalView(id: string, lines: string[]): void;

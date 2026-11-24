@@ -23,6 +23,8 @@ Object.assign(window, {
     agent: (id: string, active: boolean) => emit('agent', {id, agent: active ? harness : null}),
   },
   desktop: {
+    updateState: async () => ({status: 'idle', dismissed: true}),
+    onUpdateState: subscribe('updates'),
     info: async () => ({home: '/home/test', cwd: '/projects/test', shell: '/bin/bash', shells: ['/bin/bash'], platform: 'linux', hostname: 'local-machine', username: 'test', version: '0.4.0'}),
     setAppearance: () => {}, droppedFilePaths: () => [], reportTerminalView: () => {},
     createTerminal: async (options: any) => {

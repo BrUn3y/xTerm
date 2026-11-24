@@ -1,14 +1,15 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ArrowRight, ArrowUpRight, ChevronDown, ChevronRight, CircleHelp, Command, CornerDownLeft, Folder, FolderOpen, Keyboard, LayoutGrid, ListTree, LoaderCircle, Minus, Moon, PanelLeftClose, PanelRightClose, PanelRightOpen, Plus, Search, Settings2, SlidersHorizontal, Square, SquareTerminal, Sun, TerminalSquare, Trash2, X, Zap } from 'lucide-react';
+import { ArrowRight, ArrowUpRight, ChevronDown, ChevronRight, CircleHelp, Command, CornerDownLeft, Folder, FolderOpen, Keyboard, LayoutGrid, ListTree, LoaderCircle, Minus, Moon, PanelLeftClose, PanelRightClose, PanelRightOpen, Plus, RefreshCw, Search, Settings2, SlidersHorizontal, Square, SquareTerminal, Sun, TerminalSquare, Trash2, X, Zap } from 'lucide-react';
 import TerminalPane from './components/TerminalPane';
 import Explorer from './components/Explorer';
 import SettingsPanel from './components/SettingsPanel';
 import AgentCard from './components/AgentCard';
+import UpdateNotice from './components/UpdateNotice';
 import SshCard from './components/SshCard';
 import GitHubLink from './components/GitHubLink';
 import {FILE_PATH_MIME} from './lib/dropped-paths.mjs';
 import { basename, fonts, loadSettings, shortPath } from './settings';
-import type { AppInfo, Pane, Settings, Tab, TerminalHandle } from './types';
+import type { AppInfo, Pane, Settings, Tab, TerminalHandle, UpdateAction, UpdateState } from './types';
 
 const uid = () => crypto.randomUUID();
 const quickCommands = [
@@ -22,6 +23,10 @@ type Overlay = 'settings' | 'palette' | 'help' | null;
 
 export default function App() {
   const [info, setInfo] = useState<AppInfo | null>(null);
+  const [update, setUpdate] = useState<UpdateState>({ status: 'unavailable', installedVersion: '0.4.0', version: null,
+    releaseUrl: null, progress: null, dismissed: true, message: 'Updates are disabled in web previews.' });
+  const [pendingUpdates, setPendingUpdates] = useState(0);
+  const updateBusy = pendingUpdates > 0;
   useEffect(() => {
     const preventFileNavigation = (event: DragEvent) => {
       if (event.dataTransfer && ['Files',FILE_PATH_MIME,'text/uri-list'].some(type => event.dataTransfer!.types.includes(type))) event.preventDefault();
@@ -60,6 +65,19 @@ export default function App() {
   const notify = useCallback((message: string) => {
     setToast(message); if (toastTimer.current) clearTimeout(toastTimer.current);
     toastTimer.current = setTimeout(() => setToast(''), 4200);
+  }, []);
+  const updateAction = useCallback(async (action: UpdateAction) => {
+    if (!window.desktop) { setUpdate(current => ({ ...current, dismissed: false })); return; }
+    if (action !== 'later') setPendingUpdates(count => count + 1);
+    try { setUpdate(await window.desktop.updateAction(action)); }
+    catch { notify('Could not contact the updater. Your terminals are still running.'); }
+    finally { if (action !== 'later') setPendingUpdates(count => count - 1); }
+  }, [notify]);
+  useEffect(() => {
+    let alive = true, received = false;
+    const unsubscribe = window.desktop?.onUpdateState(state => { received = true; if (alive) setUpdate(state); });
+    void window.desktop?.updateState().then(state => { if (alive && !received) setUpdate(state); }).catch(() => {});
+    return () => { alive = false; unsubscribe?.(); };
   }, []);
   const newTab = (directory = cwd, selectedShell = shell) => {
     if (tabs.reduce((n, tab) => n + tab.panes.length, 0) >= 24) { notify('You can open up to 24 sessions.'); return; }
@@ -145,6 +163,7 @@ export default function App() {
     {name: 'Open folder', detail: 'Navigate to another project', shortcut: '⌘ O', icon: FolderOpen, run: () => void chooseFolder()},
     {name: 'Clear terminal', detail: 'Clear visible scrollback', shortcut: '', icon: Trash2, run: () => activeHandle()?.clear()},
     {name: 'Preferences', detail: 'Fonts, colors, and behavior', shortcut: '⌘ ,', icon: SlidersHorizontal, run: () => setOverlay('settings')},
+    {name: 'Check for updates', detail: 'Stable xTerm releases', shortcut: '', icon: RefreshCw, run: () => void updateAction('check')},
     {name: explorer ? 'Hide explorer' : 'Show explorer', detail: 'More room for what matters', shortcut: '⌘ B', icon: ListTree, run: () => setExplorer(value => !value)},
     ...quickCommands.map(command => ({name: command.name, detail: command.command, shortcut: 'insert ↵', icon: TerminalSquare, run: () => insertCommand(command.command)})),
   ].filter(action => `${action.name} ${action.detail}`.toLowerCase().includes(paletteQuery.toLowerCase()));
@@ -158,6 +177,7 @@ export default function App() {
     else if (command === 'open-folder') void chooseFolder();
     else if (command === 'search') openSearch();
     else if (command === 'palette') showOverlay('palette');
+    else if (command === 'updates') { setOverlay(null); void updateAction('check'); }
   };
   useEffect(() => window.desktop?.onCommand(command => commandRef.current(command)), []);
   useEffect(() => {
@@ -190,7 +210,7 @@ export default function App() {
   const activeFont = fonts.find(font => font.value === settings.font)?.name || 'Monospace';
   const totalSessions = tabs.reduce((total, tab) => total + tab.panes.length, 0);
   return <div className={`app theme-${settings.theme}`}>
-    <div className="titlebar"><div className="traffic-space">{info?.platform !== 'darwin' && <div className="window-buttons"><button title="Minimize" onClick={() => window.desktop?.windowAction('minimize')}><Minus size={12}/></button><button title="Maximize" onClick={() => window.desktop?.windowAction('maximize')}><Square size={10}/></button><button title="Close window" onClick={() => window.desktop?.windowAction('close')}><X size={12}/></button></div>}</div><span className="titlebar-center"><span className="titlebar-emblem">⌘</span> A SPACE TO CREATE</span><div className="titlebar-right"><span className="titlebar-version">v{info?.version || '0.4.0'}</span><button title="Command palette (⌘ K)" onClick={() => showOverlay('palette')}><Command size={12}/><span>K</span></button></div></div>
+    <div className="titlebar"><div className="traffic-space">{info?.platform !== 'darwin' && <div className="window-buttons"><button title="Minimize" onClick={() => window.desktop?.windowAction('minimize')}><Minus size={12}/></button><button title="Maximize" onClick={() => window.desktop?.windowAction('maximize')}><Square size={10}/></button><button title="Close window" onClick={() => window.desktop?.windowAction('close')}><X size={12}/></button></div>}</div><span className="titlebar-center"><span className="titlebar-emblem">⌘</span> A SPACE TO CREATE</span><div className="titlebar-right"><span className="titlebar-version">v{info?.version || '0.4.0'}</span><button className={['available', 'ready'].includes(update.status) ? 'update-indicator' : ''} title="Check for updates" aria-label="Check for updates" disabled={update.status === 'installing' || (!update.dismissed && (updateBusy || ['checking', 'downloading'].includes(update.status)))} onClick={() => void updateAction('check')}><RefreshCw size={12}/></button><button title="Command palette (⌘ K)" onClick={() => showOverlay('palette')}><Command size={12}/><span>K</span></button></div></div>
     <div className="app-body">
       <aside className="sidebar">
         <div className="brand"><div className="brand-symbol" aria-hidden="true">x<span>_</span></div><span>xTerm<span className="brand-dot">®</span></span><span className="brand-label">TERMINAL<br/>REIMAGINED</span></div>
@@ -212,6 +232,7 @@ export default function App() {
           {activePane && <GitHubLink key={`${activeTabId}:${activePane.id}:${activePane.cwd}`} cwd={activePane.cwd} refreshKey={refreshKey} onError={notify}/>}
           <button className="theme-toggle" type="button" title={settings.theme === 'light' ? 'Switch to dark mode' : 'Switch to light mode'} aria-label={settings.theme === 'light' ? 'Switch to dark mode' : 'Switch to light mode'} aria-pressed={settings.theme === 'dark'} onClick={toggleTheme}>{settings.theme === 'light' ? <Moon size={15}/> : <Sun size={15}/>}<span>{settings.theme === 'light' ? 'Dark mode' : 'Light mode'}</span></button><button className="open-folder-button" onClick={() => void chooseFolder()}><FolderOpen size={15}/><span>Open folder</span><ArrowUpRight size={14}/></button></div></header>
         <div className="workspace-toolbar"><div className="breadcrumb"><Folder size={13}/><span>{home && cwd ? shortPath(cwd, home).split('/').slice(0,-1).join('/') || '~' : '~'}</span><ChevronRight size={12}/><strong>{basename(cwd) || 'workspace'}</strong></div><div className="toolbar-actions"><button title="Search terminal (⌘ F)" className={`icon-button ${search ? 'active' : ''}`} onClick={openSearch}><Search size={15}/></button><button title="Split pane (⌘ D). Click again to change orientation." className="icon-button" onClick={split}><PanelLeftClose size={16}/></button><span className="toolbar-divider"/><button title="Appearance settings" className="icon-button" onClick={() => showOverlay('settings')}><SlidersHorizontal size={15}/></button><button title={explorer ? 'Hide explorer (⌘ B)' : 'Show explorer (⌘ B)'} className={`icon-button ${explorer ? 'active' : ''}`} onClick={() => setExplorer(!explorer)}>{explorer ? <PanelRightClose size={16}/> : <PanelRightOpen size={16}/>}</button></div></div>
+        <UpdateNotice state={update} busy={updateBusy} onAction={action => void updateAction(action)}/>
         <div className="work-area">
           <div className={`terminal-workspace background-${settings.background} ${settings.motion ? '' : 'motion-off'} ${activePane?.agent?.status === 'working' ? 'agent-working' : ''}`}>
             <div className="terminal-tabs"><div className="tabs-scroll" role="tablist" aria-label="Terminal sessions">{tabs.map((tab, index) => <div key={tab.id} role="tab" aria-selected={tab.id === activeTabId} tabIndex={0} className={`terminal-tab ${tab.id === activeTabId ? 'active' : ''}`} onClick={() => setActiveTabId(tab.id)} onKeyDown={event => { if (event.key === 'Enter' || event.key === ' ') setActiveTabId(tab.id); }}><TerminalSquare size={13}/><span>{basename(tab.panes.find(pane => pane.id === tab.activePane)?.cwd || '')}<small> {String(index + 1).padStart(2,'0')}</small></span><button title="Close tab" onClick={event => { event.stopPropagation(); closeTab(tab.id); }}><X size={12}/></button></div>)}</div><button className="tab-add" title="New tab (⌘ T)" onClick={() => newTab()}><Plus size={16}/></button><div className="tabs-end"><span>⌘</span><span>_</span></div></div>

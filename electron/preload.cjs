@@ -6,6 +6,9 @@ const subscribe = (channel, callback) => {
 };
 contextBridge.exposeInMainWorld('desktop', {
   info: () => ipcRenderer.invoke('app:info'),
+  updateState: () => ipcRenderer.invoke('updates:state'),
+  updateAction: action => ipcRenderer.invoke('updates:action', action),
+  onUpdateState: callback => subscribe('updates:state-changed', callback),
   setAppearance: theme => ipcRenderer.send('app:appearance', theme),
   droppedFilePaths: files => Array.from(files).slice(0,100).map(file => webUtils.getPathForFile(file)).filter(Boolean),
   reportTerminalView: (id, lines) => ipcRenderer.send('terminal:view', {id,lines}),
