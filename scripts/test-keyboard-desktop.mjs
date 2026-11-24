@@ -176,7 +176,14 @@ try {
     const rows = () => page.locator('.terminal-pane').first().locator('.xterm-rows > div').allTextContents();
     const first = 'keyboard_first_20261124';
     const second = 'keyboard_second_20261124';
-    await input.pressSequentially(first, {delay: 25});
+    if (legacy) await input.pressSequentially(first, {delay: 25});
+    else {
+      await application.evaluate(({clipboard}, text) => clipboard.writeText(text), first);
+      await input.press('Control+Shift+v');
+      await page.waitForTimeout(400);
+      assert.ok((await rows()).some(row => row.includes(first)), 'Clipboard text reaches the real Codex composer');
+      assert.ok(!(await data()).includes('Failed to paste image'), 'Text paste does not trigger the Codex image shortcut');
+    }
     await input.press('Shift+Enter');
     await page.waitForTimeout(600);
     await input.pressSequentially(second, {delay: 25});
@@ -199,20 +206,28 @@ try {
       assert.ok(edited.some(row => row.includes(first + '_edited')), 'First line remains editable');
       assert.ok(edited.some(row => row.includes(second)), 'Second line remains intact');
       await page.screenshot({path: path.join(output, 'codex-edited.png')});
+      const third = 'keyboard_clipboard_third_20261124';
+      await input.press('ArrowDown'); await input.press('End');
+      await application.evaluate(({clipboard}, text) => clipboard.writeText(text), `\n${third}`);
+      await input.press('Control+Shift+v');
+      await page.waitForTimeout(400);
+      assert.equal(requests.length, 0, 'Multiline clipboard paste must not submit a request');
+      assert.ok((await rows()).some(row => row.includes(third)), 'Multiline clipboard text reaches the real Codex composer');
       await input.press('Enter');
       const deadline = Date.now() + 10000;
       while (!requests.some(request => JSON.stringify(request.body).includes(first))) {
         if (Date.now() > deadline) throw new Error('Enter did not submit Codex input to the controlled loopback server');
         await page.waitForTimeout(50);
       }
-      assert.ok(requests.some(request => JSON.stringify(request.body).includes(`${first}_edited\\n${second}`)), 'Enter submits both edited lines in one request');
+      assert.ok(requests.some(request => JSON.stringify(request.body).includes(`${first}_edited\\n${second}\\n${third}`)), 'Enter submits edited and pasted lines in one request');
       await writeFile(path.join(output, 'codex-submission.json'), JSON.stringify(requests, null, 2));
-      console.log(`PASS real ${version.trim()} composer: Shift+Enter inserts newline without request, both lines editable, Enter submits edited multiline input to loopback rejection server. No model executed.`);
+      console.log(`PASS real ${version.trim()} composer: clipboard text and multiline paste, Shift+Enter newline, editable lines, Enter submits all lines to loopback rejection server. No model executed.`);
     }
   }
   assert.deepEqual(errors, []);
   const pkg = JSON.parse(await readFile('node_modules/@xterm/xterm/package.json', 'utf8'));
-  console.log(`Environment: xTerm 0.4.0, xterm.js ${pkg.version}, ${os.type()} ${os.release()} ${os.arch()}`);
+  const appPkg = JSON.parse(await readFile('package.json', 'utf8'));
+  console.log(`Environment: xTerm ${appPkg.version}, xterm.js ${pkg.version}, ${os.type()} ${os.release()} ${os.arch()}`);
 } finally {
   await application?.close();
   if (provider) await new Promise(resolve => provider.close(resolve));

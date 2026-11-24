@@ -13,12 +13,15 @@ const modes = {
   restoreSet: '\x1b[=1u\x1b[>0u\x1b[<u',
   restoreNestedSet: '\x1b[>1u\x1b[=7u\x1b[>0u\x1b[<u',
   overPop: '\x1b[>1u\x1b[>7u\x1b[<3u',
+  paste0: '\x1b[?2004h',
+  paste1: '\x1b[?2004h\x1b[>1u',
+  paste11: '\x1b[?2004h\x1b[>11u',
 };
 process.stdout.write(`${modes[mode] ?? `\x1b[>${mode}u`}\x1b[?u\r\nPROBE_READY\r\n`);
 process.stdin.on('data', data => {
   process.stdout.write(`\r\nBYTES:${data.toString('hex')}\r\n`);
   if (data.includes(3)) {
-    process.stdout.write('\x1b[<u');
+    process.stdout.write('\x1b[<u\x1b[?2004l');
     process.exit(0);
   }
 });

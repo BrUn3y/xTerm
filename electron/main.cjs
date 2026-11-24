@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, dialog, shell, Menu, nativeTheme } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, shell, Menu, nativeTheme, clipboard } = require('electron');
 const path = require('node:path');
 const os = require('node:os');
 const fs = require('node:fs');
@@ -108,6 +108,7 @@ ipcMain.on('app:appearance', (_event, theme) => {
   nativeTheme.themeSource = theme;
   if (window && !window.isDestroyed()) window.setBackgroundColor(theme === 'dark' ? '#20221f' : '#f3f2ed');
 });
+ipcMain.handle('clipboard:read-text', () => clipboard.readText());
 ipcMain.handle('terminal:create', async (_event, options) => {
   if (!options || typeof options.id !== 'string' || !/^[\w-]{1,80}$/.test(options.id) || sessions.has(options.id)) throw new Error('Invalid session.');
   if (sessions.size >= 24) throw new Error('A maximum of 24 sessions can be open.');

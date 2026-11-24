@@ -113,7 +113,7 @@ Listing a folder reads its directory entries without consulting child metadata o
 | Paste | ⌘ V |
 | Interrupt process | Ctrl C |
 
-On Windows and Linux, menu shortcuts use Ctrl. Copy selection, toggle explorer, and font-size shortcuts use Ctrl + Shift. The application is validated on **macOS Apple Silicon**. Windows and Linux build configurations are included but have not been validated on those platforms. Automatic directory tracking is implemented for zsh and bash.
+On Windows and Linux, menu shortcuts use Ctrl. Copy selection, paste text, toggle explorer, and font-size shortcuts use Ctrl + Shift. In a terminal, Cmd+V and Ctrl+Shift+V read clipboard text and use xterm.js's paste path, including negotiated bracketed paste; they do not send a harness image shortcut. Ctrl+V remains a process key (for example, a harness image-paste action or a shell's quoted insert). Empty or image-only clipboards insert no text. Native Edit > Paste and text fields keep their normal behavior. The application is validated on **macOS Apple Silicon**. Windows and Linux build configurations are included but have not been validated on those platforms. Automatic directory tracking is implemented for zsh and bash.
 
 ## Validation
 
@@ -121,7 +121,11 @@ On Windows and Linux, menu shortcuts use Ctrl. Copy selection, toggle explorer, 
 npm test            # OSC parsing and preservation of zsh/bash configuration
 npm run test:pty    # Native PTY, TTY, resize, Unicode, paths, Ctrl+C, and exit
 npm run build       # Strict TypeScript checking and production compilation
+npm run test:clipboard-desktop # Native clipboard, paste shortcuts, and PTY bytes
 ```
+
+See [clipboard validation](docs/clipboard-validation.md) for the baseline
+reproduction, real Codex checks, CI coverage and remaining platform limitations.
 
 If you change Electron versions or `node-pty` fails to load, run `npm run rebuild`. PTY tests use Electron's binary to match the native ABI. Shell tests require zsh or bash and are skipped if neither is present.
 

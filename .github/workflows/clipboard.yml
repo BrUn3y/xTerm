@@ -1,0 +1,42 @@
+name: Clipboard Regression
+
+on:
+  pull_request:
+    paths:
+      - 'electron/**'
+      - 'src/**'
+      - 'tests/**'
+      - 'scripts/test-clipboard-desktop.mjs'
+      - 'package*.json'
+      - '.github/workflows/clipboard.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  clipboard:
+    name: Native Clipboard (${{ matrix.os }})
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-15, ubuntu-24.04]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npm run build
+      - name: Native clipboard on macOS
+        if: runner.os == 'macOS'
+        run: npm run test:clipboard-desktop
+      - name: Native clipboard on Linux
+        if: runner.os == 'Linux'
+        run: xvfb-run -a npm run test:clipboard-desktop

@@ -37,6 +37,7 @@ export interface TerminalHandle {
 export interface Desktop {
   info(): Promise<AppInfo>;
   setAppearance(theme: Settings['theme']): void;
+  readClipboardText(): Promise<string>;
   droppedFilePaths(files: File[]): string[];
   reportTerminalView(id: string, lines: string[]): void;
   createTerminal(options: {id: string; cwd: string; shell: string; cols: number; rows: number}): Promise<{id: string; cwd: string; shell: string; pid: number}>;
