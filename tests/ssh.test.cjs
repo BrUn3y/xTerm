@@ -32,6 +32,15 @@ test('SSH discovery requires foreground group membership and PTY ancestry', () =
   assert.equal(findForegroundSsh(100, [root, {...ssh, command: 'ssh work', argv: ['ssh','-o','ProxyCommand=ssh -W %h:%p jump','work']}]).request.target, 'work');
 });
 
+test('SSH CLI values use OpenSSH first-value precedence before destination user/port', () => {
+  assert.equal(request(['-l', 'first', 'second@work']).user, 'first');
+  assert.equal(request(['-p', '2222', 'ssh://second@work:3333']).port, 2222);
+  assert.equal(request(['-l', 'first', '-l', 'second', 'work']).user, 'first');
+  assert.equal(request(['-o', 'User=first', '-l', 'second', 'work']).user, 'first');
+  assert.equal(request(['-o', 'Port=3333', '-p', '2222', 'work']).port, 3333);
+  assert.equal(request(['-J', 'first', '-o', 'ProxyJump=second', 'work']).options.proxyjump, 'first');
+});
+
 test('remote OSC markers cannot authorize local prompt/cwd or clear SSH on exec ssh', () => {
   const root = {pid: 100, pgid: 100, foregroundGroup: 100, state: 'S+', command: '/bin/bash -i'};
   assert.equal(isLocalShellForeground(root, 'bash'), true);
@@ -70,6 +79,34 @@ test('dynamic or missing configuration is honest and never executes Match/proxy 
   assert.equal((await readSshConfig(request(['-F','none','work']), fakeConfig({}))).configuredHost, 'work');
   const proxy = await readSshConfig(request(['-o','ProxyCommand=ssh -W %h:%p jump','work']), fakeConfig({}));
   assert.equal(proxy.routing, 'proxy');
+});
+
+test('top-level system config starts active without resetting first-value precedence', async () => {
+  const value = await readSshConfig(request(['work']), fakeConfig({
+    '/test/.ssh/config': 'Host work\n User alice\nHost other\n Port 9999\n ProxyJump wrong-jump',
+    '/etc/ssh/ssh_config': 'User fallback\nPort 2222\nHost *\n HostName system.example',
+  }));
+  assert.equal(value.user, 'alice');
+  assert.equal(value.port, 2222);
+  assert.equal(value.configuredHost, 'system.example');
+  assert.equal(value.jumpHost, null);
+  assert.equal(value.routing, 'direct');
+});
+
+test('CLI canonicalization and unresolved hostname tokens never assert a direct endpoint', async () => {
+  const config = fakeConfig({});
+  for (const option of ['CanonicalizeHostname=yes', 'CanonicalizeHostname=always', 'HostName=server-%n', 'HostName=server-%r', 'HostName=server-%']) {
+    const value = await readSshConfig(request(['-o', option, 'work']), config);
+    assert.equal(value.routing, 'unknown', option);
+    if (option.startsWith('HostName')) assert.equal(value.configuredHost, null);
+  }
+  const expanded = await readSshConfig(request(['-o', 'HostName=server-%h', 'work']), config);
+  assert.equal(expanded.configuredHost, 'server-work');
+  assert.equal(expanded.routing, 'direct');
+  const value = await readSshConfig(request(['-o', 'CanonicalizeHostname=no', 'work']), fakeConfig({
+    '/test/.ssh/config': 'Host *\n CanonicalizeHostname yes',
+  }));
+  assert.equal(value.routing, 'direct');
 });
 
 test('transport parsing associates only owned sockets, handles IPv4, IPv6 and macOS lsof', () => {

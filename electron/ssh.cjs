@@ -42,9 +42,8 @@ function parseSshArgs(args) {
       if (valueOptions.has(option)) {
         const value = argument.slice(offset + 1) || args[++index];
         if (value == null) return null;
-        if (option === 'p') options.port = value;
-        if (option === 'l') options.user = value;
-        if (option === 'J') options.proxyjump = value;
+        const key = {p: 'port', l: 'user', J: 'proxyjump'}[option];
+        if (key && !Object.hasOwn(options, key)) options[key] = value;
         if (option === 'F') options.configFile = value;
         if (option === 'o') {
           const match = /^(\w+)(?:=|\s+)(.*)$/.exec(value);
@@ -74,7 +73,7 @@ function parseSshArgs(args) {
     target = destination.slice(at + 1).replace(/^\[|\]$/g, '');
   }
   if (!safeText(target) || target.startsWith('-') || user && !safeText(user)) return null;
-  return {target, user: safeText(user || options.user), port: portNumber(uriPort || options.port),
+  return {target, user: safeText(options.user || user), port: portNumber(options.port || uriPort),
     options, destination};
 }
 
@@ -163,20 +162,34 @@ async function readSshConfig(request, {home = os.homedir(), cwd = home, readFile
   const custom = request.options.configFile;
   if (custom !== 'none') {
     if (custom) await read(path.resolve(cwd, custom.startsWith('~/') ? path.join(home, custom.slice(2)) : custom), true);
-    else { await read(path.join(home, '.ssh/config')); await read('/etc/ssh/ssh_config'); }
+    else {
+      await read(path.join(home, '.ssh/config'));
+      // Host/Match state crosses Includes, not separate top-level config files.
+      active = true;
+      await read('/etc/ssh/ssh_config');
+    }
   }
   // CLI values remain useful even if static configuration is too complex to resolve safely.
   const config = complete ? values : {};
-  for (const key of ['hostname', 'user', 'port', 'proxyjump', 'proxycommand']) {
+  for (const key of ['hostname', 'user', 'port', 'proxyjump', 'proxycommand', 'canonicalizehostname']) {
     if (Object.hasOwn(request.options, key)) config[key] = request.options[key];
   }
-  const expand = value => safeText(value?.replace(/%%/g, '\0').replace(/%h/g, request.target).replace(/\0/g, '%'));
+  const expand = value => {
+    if (!value) return null;
+    let unsupported = false;
+    const expanded = value.replace(/%(.)/g, (_match, token) => {
+      if (token === '%') return '%';
+      if (token === 'h') return request.target;
+      unsupported = true; return '';
+    });
+    return unsupported || /[%$]/.test(expanded) ? null : safeText(expanded);
+  };
   const hostname = expand(config.hostname || (complete ? request.target : null));
   const user = request.user || safeText(config.user) || (complete ? os.userInfo().username : null);
   const port = request.port || portNumber(config.port) || (complete ? 22 : null);
   const jumpHost = config.proxyjump && config.proxyjump !== 'none' ? safeText(config.proxyjump) : null;
   const proxied = !!jumpHost || !!config.proxycommand && config.proxycommand !== 'none';
-  const routingKnown = complete && !/[%$]/.test(config.hostname || '') &&
+  const routingKnown = complete && hostname !== null &&
     (!config.canonicalizehostname || config.canonicalizehostname === 'no');
   return {configuredHost: hostname, user, port, jumpHost, routing: !routingKnown ? 'unknown' : proxied ? 'proxy' : 'direct',
     configStatus: complete ? 'static' : 'unavailable'};
