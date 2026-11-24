@@ -4,6 +4,7 @@ import TerminalPane from './components/TerminalPane';
 import Explorer from './components/Explorer';
 import SettingsPanel from './components/SettingsPanel';
 import AgentCard from './components/AgentCard';
+import SshCard from './components/SshCard';
 import {FILE_PATH_MIME} from './lib/dropped-paths.mjs';
 import { basename, fonts, loadSettings, shortPath } from './settings';
 import type { AppInfo, Pane, Settings, Tab, TerminalHandle } from './types';
@@ -90,6 +91,7 @@ export default function App() {
     setTabs(current => current.map(tab => ({...tab, panes: tab.panes.map(pane => pane.id === id ? {...pane, ...update} : pane)})));
   }, []);
   useEffect(() => window.desktop?.onAgent(({id, agent}) => updatePane(id, {agent})), [updatePane]);
+  useEffect(() => window.desktop?.onSsh(({id, ssh}) => updatePane(id, {ssh})), [updatePane]);
   const onHandle = useCallback((id: string, handle: TerminalHandle | null) => { if (handle) handles.current.set(id, handle); else handles.current.delete(id); }, []);
   const focusPane = (id: string) => setTabs(current => current.map(tab => tab.id === activeTabId ? {...tab, activePane: id} : tab));
   const closeTab = (id = activeTabId) => {
@@ -201,7 +203,7 @@ export default function App() {
           <div className="session-list">{tabs.map((tab, index) => <button key={tab.id} className={`session-item ${tab.id === activeTabId ? 'selected' : ''}`} onClick={() => setActiveTabId(tab.id)}><span className="session-line"/><TerminalSquare size={14}/><span>{basename(tab.panes.find(pane => pane.id === tab.activePane)?.shell || shell)}<small>{tab.panes.length > 1 ? ' / split' : ` / ${String(index + 1).padStart(2,'0')}`}</small></span><i className={tab.panes.some(pane => pane.status === 'running') ? 'live-dot' : 'idle-dot'}/></button>)}</div>
           <button className="new-session" onClick={() => newTab()}><Plus size={13}/><span>New session</span><kbd>⌘ T</kbd></button>
         </div>
-        <div className="harness-slot"><AgentCard agent={activePane?.agent || null}/></div>
+        <div className="harness-slot">{activePane?.ssh ? <SshCard ssh={activePane.ssh} agent={activePane.agent || null}/> : <AgentCard agent={activePane?.agent || null}/>}</div>
         <div className="sidebar-footer"><button onClick={() => showOverlay('settings')}><Settings2 size={16}/><span>Preferences</span><kbd>⌘ ,</kbd></button><button className="help-button" title="Keyboard shortcuts" onClick={() => showOverlay('help')}><CircleHelp size={16}/></button></div>
       </aside>
       <main className="main-workspace">
