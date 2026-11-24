@@ -1,0 +1,93 @@
+name: Preview Release Build
+
+on:
+  workflow_dispatch:
+    inputs:
+      commit:
+        description: Exact reviewed commit SHA
+        type: string
+        required: true
+      version:
+        description: Package version, without the v prefix
+        type: string
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: preview-release-${{ inputs.commit }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build ${{ matrix.platform }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: mac-arm64
+            os: macos-15
+            builder: --mac --arm64 -c.mac.identity=null
+            glob: |
+              release/*.dmg
+              release/*.zip
+          - platform: linux-x64
+            os: ubuntu-24.04
+            builder: --linux --x64
+            glob: release/*.AppImage
+    runs-on: ${{ matrix.os }}
+    env:
+      CSC_IDENTITY_AUTO_DISCOVERY: "false"
+      EXPECTED_VERSION: ${{ inputs.version }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ inputs.commit }}
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: "22"
+          cache: npm
+      - name: Verify exact source and package version
+        env:
+          EXPECTED_COMMIT: ${{ inputs.commit }}
+        run: |
+          test "$(git rev-parse HEAD)" = "$EXPECTED_COMMIT"
+          node -e 'if (require("./package.json").version !== process.env.EXPECTED_VERSION) process.exit(1)'
+      - name: Install native dependencies
+        run: npm ci
+      - name: Unit and shell tests
+        run: npm test
+      - name: Native PTY tests on macOS
+        if: runner.os == 'macOS'
+        run: npm run test:pty
+      - name: Native PTY tests on Linux
+        if: runner.os == 'Linux'
+        run: xvfb-run -a npm run test:pty
+      - name: Build production renderer
+        run: npm run build
+      - name: Package without publishing
+        run: npx --no-install electron-builder ${{ matrix.builder }} --publish never
+      - name: Checksums
+        env:
+          PLATFORM: ${{ matrix.platform }}
+        run: |
+          node --input-type=module -e '
+            import fs from "node:fs";
+            import crypto from "node:crypto";
+            const extensions = process.platform === "darwin" ? [".dmg", ".zip"] : [".AppImage"];
+            const files = fs.readdirSync("release").filter(name => extensions.some(ext => name.endsWith(ext))).sort();
+            if (files.length !== extensions.length) throw new Error("Missing or ambiguous release artifacts");
+            fs.writeFileSync(`release/SHA256SUMS-${process.env.PLATFORM}.txt`,
+              files.map(name => `${crypto.createHash("sha256").update(fs.readFileSync(`release/${name}`)).digest("hex")}  ${name}\n`).join(""));
+          '
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: preview-${{ matrix.platform }}
+          if-no-files-found: error
+          retention-days: 14
+          path: |
+            ${{ matrix.glob }}
+            release/SHA256SUMS-*.txt

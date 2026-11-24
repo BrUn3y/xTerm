@@ -4,6 +4,12 @@ A desktop terminal built with Electron, React, TypeScript, xterm.js, and node-pt
 
 [Website & screenshots](https://brun3y.github.io/xTerm/) · [Download for Mac (Apple Silicon)](https://github.com/BrUn3y/xTerm/releases/download/v0.4.0/xTerm-0.4.0-arm64.dmg) · [Release notes](https://github.com/BrUn3y/xTerm/releases)
 
+The `0.5.0-beta.1` preview adds an active-repository GitHub link, an SSH sidebar
+and negotiated Shift+Enter input. It pins a prerelease xterm.js core; see
+[preview notes](docs/releases/v0.5.0-beta.1.md) for validation and limitations.
+The stable download above remains `0.4.0`. This preview does not include the
+unfinished in-app updater or the official IBM Bob avatar.
+
 ## Run
 
 Requires Node.js 22.12 or later. On macOS, native modules require Xcode Command Line Tools (`xcode-select --install`).
