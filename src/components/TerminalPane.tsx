@@ -74,7 +74,20 @@ export default function TerminalPane(props: Props) {
       if (!viewTimer) viewTimer=setTimeout(reportView,150);
     });
     termRef.current = terminal; fitRef.current = fit;
-    terminal.attachCustomKeyEventHandler(createAppKeyHandler(terminal, text => {void navigator.clipboard.writeText(text);}));
+    terminal.attachCustomKeyEventHandler(createAppKeyHandler(
+      terminal,
+      text => {void navigator.clipboard.writeText(text);},
+      () => {
+        void desktop.readClipboardText().then(text => {
+          if (!disposed && current.current.visible &&
+            document.activeElement === terminal.textarea && current.current.pane.status === 'running' && text) {
+            terminal.paste(text);
+          }
+        }).catch(() => {
+          if (!disposed) setDropError('Could not read clipboard text.');
+        });
+      },
+    ));
     const unsubscribeData = desktop.onData(event => { if (event.id === pane.id) terminal.write(event.data); });
     const unsubscribeCwd = desktop.onCwd(event => { if (event.id === pane.id) current.current.onUpdate(pane.id, {cwd: event.cwd}); });
     const unsubscribeExit = desktop.onExit(event => {

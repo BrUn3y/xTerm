@@ -7,6 +7,7 @@ const subscribe = (channel, callback) => {
 contextBridge.exposeInMainWorld('desktop', {
   info: () => ipcRenderer.invoke('app:info'),
   setAppearance: theme => ipcRenderer.send('app:appearance', theme),
+  readClipboardText: () => ipcRenderer.invoke('clipboard:read-text'),
   droppedFilePaths: files => Array.from(files).slice(0,100).map(file => webUtils.getPathForFile(file)).filter(Boolean),
   reportTerminalView: (id, lines) => ipcRenderer.send('terminal:view', {id,lines}),
   createTerminal: options => ipcRenderer.invoke('terminal:create', options),
