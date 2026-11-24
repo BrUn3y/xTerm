@@ -2,12 +2,13 @@
 
 A desktop terminal built with Electron, React, TypeScript, xterm.js, and node-pty. An industrial interface in orange, paper, and carbon.
 
-[Website & screenshots](https://brun3y.github.io/xTerm/) · [Download for Mac (Apple Silicon)](https://github.com/BrUn3y/xTerm/releases/download/v0.5.0/xTerm-0.5.0-arm64.dmg) · [Release notes](https://github.com/BrUn3y/xTerm/releases)
+[Website & screenshots](https://brun3y.github.io/xTerm/) · [Download for Mac (Apple Silicon)](https://github.com/BrUn3y/xTerm/releases/download/v0.5.1/xTerm-0.5.1-arm64.dmg) · [Release notes](https://github.com/BrUn3y/xTerm/releases)
 
-Version `0.5.0` includes an active-repository GitHub link, an SSH
-sidebar, negotiated Shift+Enter input and IBM's official Bob avatar, bundled for
-offline use. It pins a prerelease xterm.js core; see
-[release notes](docs/releases/v0.5.0.md) for validation and limitations.
+Version `0.5.1` fixes text paste in coding agents and macOS bundle integrity.
+It includes an active-repository GitHub link, an SSH sidebar, negotiated
+Shift+Enter input and IBM's official Bob avatar, bundled for offline use.
+It pins a prerelease xterm.js core; see
+[release notes](docs/releases/v0.5.1.md) for validation and limitations.
 Downloads include macOS Apple Silicon DMG/ZIP, Linux x64 AppImage and SHA-256
 checksums. Install updates manually; the in-app updater is still in development.
 
@@ -33,7 +34,11 @@ npm run dist      # Build macOS DMG/ZIP, Windows NSIS, or Linux AppImage
 
 Build output is written to `release/`. On Apple Silicon, the default application path is `release/mac-arm64/xTerm.app`. Installers are generated locally with `npm run dist`.
 
-Local builds are not notarized for public distribution. Publishing requires configuring Apple signing and notarization. Development does not require signing credentials.
+macOS builds use an ad-hoc signature to seal the application and native helpers.
+They are not signed with an Apple Developer ID or notarized; macOS may require
+approval in Privacy & Security on first launch. Development does not require
+signing credentials. A Developer ID and notarization are required for trusted
+Apple distribution.
 
 ## Appearance
 

@@ -29,7 +29,7 @@ jobs:
         include:
           - platform: mac-arm64
             os: macos-15
-            builder: --mac --arm64 -c.mac.identity=null
+            builder: --mac --arm64
             glob: |
               release/*.dmg
               release/*.zip
@@ -68,8 +68,17 @@ jobs:
         run: xvfb-run -a npm run test:pty
       - name: Build production renderer
         run: npm run build
+      - name: Native clipboard on macOS
+        if: runner.os == 'macOS'
+        run: npm run test:clipboard-desktop
+      - name: Native clipboard on Linux
+        if: runner.os == 'Linux'
+        run: xvfb-run -a npm run test:clipboard-desktop
       - name: Package without publishing
         run: npx --no-install electron-builder ${{ matrix.builder }} --publish never
+      - name: Verify macOS signatures and installed DMG/ZIP terminals
+        if: runner.os == 'macOS'
+        run: node scripts/verify-mac-release.mjs
       - name: Checksums
         env:
           PLATFORM: ${{ matrix.platform }}
