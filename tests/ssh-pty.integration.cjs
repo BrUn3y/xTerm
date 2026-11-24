@@ -136,7 +136,8 @@ test('controlled OpenSSH server: direct/alias metadata, foreground isolation, ex
   } finally {
     for (const value of terminals) {
       value.monitor.reset(); value.harness.reset();
-      try {value.process.kill();} catch {}
+      // Interactive bash can ignore SIGHUP; ensure isolated test PTYs close.
+      try {value.process.kill('SIGKILL');} catch {}
     }
     if (server) {server.kill('SIGTERM'); await delay(120);}
     fs.rmSync(directory, {recursive: true, force: true, maxRetries: 4, retryDelay: 50});
