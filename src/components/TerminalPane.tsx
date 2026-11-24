@@ -8,6 +8,7 @@ import type { Pane, Settings, TerminalHandle } from '../types';
 import { themeColors, basename } from '../settings';
 import { adaptTerminalRows } from '../terminal-appearance';
 import {FILE_PATH_MIME, pathsFromDropData, quoteDroppedPaths} from '../lib/dropped-paths.mjs';
+import {createAppKeyHandler} from '../lib/terminal-keyboard.mjs';
 
 interface Props {
   pane: Pane; settings: Settings; active: boolean; visible: boolean; split: boolean;
@@ -50,6 +51,8 @@ export default function TerminalPane(props: Props) {
       theme: themeColors[settings.theme], scrollback: settings.scrollback,
       macOptionIsMeta: true, macOptionClickForcesSelection: true, rightClickSelectsWord: true,
       allowProposedApi: false, minimumContrastRatio: 4.5,
+      // Applications opt in; unnegotiated shells keep their legacy key encoding.
+      vtExtensions: { kittyKeyboard: true },
     });
     const fit = new FitAddon();
     const search = new SearchAddon();
@@ -71,16 +74,7 @@ export default function TerminalPane(props: Props) {
       if (!viewTimer) viewTimer=setTimeout(reportView,150);
     });
     termRef.current = terminal; fitRef.current = fit;
-    terminal.attachCustomKeyEventHandler(event => {
-      if (event.type !== 'keydown') return true;
-      const appModifier = event.metaKey || event.ctrlKey && event.shiftKey;
-      if (appModifier && event.key.toLowerCase() === 'c') {
-        if (terminal.hasSelection()) void navigator.clipboard.writeText(terminal.getSelection());
-        return false;
-      }
-      if (appModifier && ['k','f','t','w','d',',','o','b','+','-','='].includes(event.key.toLowerCase())) return false;
-      return true;
-    });
+    terminal.attachCustomKeyEventHandler(createAppKeyHandler(terminal, text => {void navigator.clipboard.writeText(text);}));
     const unsubscribeData = desktop.onData(event => { if (event.id === pane.id) terminal.write(event.data); });
     const unsubscribeCwd = desktop.onCwd(event => { if (event.id === pane.id) current.current.onUpdate(pane.id, {cwd: event.cwd}); });
     const unsubscribeExit = desktop.onExit(event => {

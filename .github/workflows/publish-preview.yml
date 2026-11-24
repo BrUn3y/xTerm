@@ -1,0 +1,110 @@
+name: Publish Verified Preview
+
+on:
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: Successful Preview Release Build run
+        type: string
+        required: true
+      commit:
+        description: Exact reviewed commit SHA
+        type: string
+        required: true
+      version:
+        description: Beta package version without v
+        type: string
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: publish-preview-${{ inputs.version }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      actions: read
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      BUILD_RUN: ${{ inputs.run_id }}
+      SOURCE_COMMIT: ${{ inputs.commit }}
+      VERSION: ${{ inputs.version }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ inputs.commit }}
+          persist-credentials: false
+      - name: Verify reviewed source and completed build
+        run: |
+          test "$(git rev-parse HEAD)" = "$SOURCE_COMMIT"
+          node -e '
+            if (!/^[a-f0-9]{40}$/.test(process.env.SOURCE_COMMIT) ||
+                !/^\d+$/.test(process.env.BUILD_RUN) ||
+                !/^0\.5\.0-beta\.\d+$/.test(process.env.VERSION) ||
+                require("./package.json").version !== process.env.VERSION) process.exit(1);
+          '
+          gh api "repos/$GH_REPO/actions/runs/$BUILD_RUN" > build-run.json
+          gh api "repos/$GH_REPO/actions/runs/$BUILD_RUN/jobs" > build-jobs.json
+          gh api "repos/$GH_REPO/actions/workflows/preview-release.yml" > build-workflow.json
+          node -e '
+            const run = require("./build-run.json");
+            const jobs = require("./build-jobs.json").jobs;
+            if (run.head_sha !== process.env.SOURCE_COMMIT ||
+                run.workflow_id !== require("./build-workflow.json").id ||
+                run.event !== "workflow_dispatch" || run.status !== "completed" ||
+                run.conclusion !== "success" ||
+                !["Build mac-arm64", "Build linux-x64"].every(name =>
+                  jobs.some(job => job.name === name && job.conclusion === "success"))) {
+              throw new Error("Build evidence does not match the reviewed source");
+            }
+          '
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          run-id: ${{ inputs.run_id }}
+          github-token: ${{ github.token }}
+          pattern: preview-*
+          merge-multiple: true
+          path: artifacts
+      - name: Verify artifact checksums and complete set
+        run: |
+          node --input-type=module -e '
+            import fs from "node:fs";
+            import crypto from "node:crypto";
+            const files = fs.readdirSync("artifacts").sort();
+            const binaries = files.filter(name => /\.(dmg|zip|AppImage)$/.test(name));
+            if (binaries.length !== 3 ||
+                ![".dmg", ".zip", ".AppImage"].every(ext => binaries.some(name => name.endsWith(ext)))) {
+              throw new Error("Incomplete or ambiguous binary set");
+            }
+            const expected = new Map();
+            for (const platform of ["mac-arm64", "linux-x64"]) {
+              for (const line of fs.readFileSync(`artifacts/SHA256SUMS-${platform}.txt`, "utf8").trim().split("\n")) {
+                const match = /^([a-f0-9]{64})  ([A-Za-z0-9._-]+)$/.exec(line);
+                if (!match || expected.has(match[2])) throw new Error("Invalid checksum manifest");
+                expected.set(match[2], match[1]);
+              }
+            }
+            if (expected.size !== 3) throw new Error("Unexpected checksum entries");
+            for (const name of binaries) {
+              if (!name.includes(process.env.VERSION)) throw new Error("Artifact version mismatch");
+              const hash = crypto.createHash("sha256").update(fs.readFileSync(`artifacts/${name}`)).digest("hex");
+              if (hash !== expected.get(name)) throw new Error(`Checksum mismatch: ${name}`);
+            }
+            fs.writeFileSync("artifacts/SHA256SUMS.txt", binaries.map(name => `${expected.get(name)}  ${name}\n`).join(""));
+          '
+      - name: Publish complete prerelease, not latest stable
+        run: |
+          TAG="v$VERSION"
+          cp "docs/releases/$TAG.md" release-notes.md
+          printf '\nSource commit: `%s`\n\nVerified build: https://github.com/%s/actions/runs/%s\n' "$SOURCE_COMMIT" "$GH_REPO" "$BUILD_RUN" >> release-notes.md
+          gh release create "$TAG" artifacts/*.dmg artifacts/*.zip artifacts/*.AppImage artifacts/SHA256SUMS.txt \
+            --repo "$GH_REPO" --target "$SOURCE_COMMIT" --title "xTerm $TAG (preview)" \
+            --notes-file release-notes.md --draft --prerelease --latest=false
+          gh release edit "$TAG" --repo "$GH_REPO" --draft=false --prerelease --latest=false
