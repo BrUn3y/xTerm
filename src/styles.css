@@ -189,7 +189,8 @@
 .terminal-drop-error { position: absolute; z-index: 7; left: 18px; right: 18px; bottom: 15px; padding: 10px 12px; display: flex; gap: 10px; align-items: center; justify-content: space-between; font-size: 11px; color: var(--ink); border: 1px solid var(--line-strong); border-radius: 3px; background: var(--surface); }
 .file-row[draggable=true] { cursor: grab; }.file-row[draggable=true]:active { cursor: grabbing; }
 
-.titlebar-right { gap: 10px; }
+.titlebar-right { gap: 10px; width: auto; min-width: 152px; }
+.titlebar-version { white-space: nowrap; }
 .titlebar-right .update-indicator { color: var(--orange); border-color: var(--orange); }
 .update-notice { display: flex; align-items: center; flex-shrink: 0; gap: 16px; margin: 0 28px 12px; padding: 12px 0; border-top: 1px solid var(--line-strong); border-bottom: 1px solid var(--line-strong); color: var(--ink); letter-spacing: 0; }
 .update-copy { flex: 1; min-width: 0; }
@@ -197,7 +198,8 @@
 .update-copy p { margin: 5px 0 0; color: var(--secondary); font-size: 11px; line-height: 1.5; overflow-wrap: anywhere; }
 .update-error strong { color: var(--danger); }
 .update-actions { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; justify-content: flex-end; }
-.update-actions button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 32px; padding: 7px 9px; font-size: 11px; border: 1px solid var(--line); border-radius: 4px; }
+/* Switch text and background together so theme transitions retain contrast. */
+.update-actions button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 32px; padding: 7px 9px; font-size: 11px; border: 1px solid var(--line); border-radius: 4px; transition: border-color .15s; }
 .update-actions button:hover { background: var(--hover); color: var(--ink); }
 .update-actions .update-primary { background: var(--ink); color: var(--paper); border-color: var(--ink); }
 .update-actions .update-primary:hover { background: var(--secondary); color: var(--paper); }

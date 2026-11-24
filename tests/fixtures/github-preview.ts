@@ -30,6 +30,8 @@ Object.assign(window, {
     external: () => external,
   },
   desktop: {
+    updateState: async () => ({status: 'idle', dismissed: true}),
+    onUpdateState: subscribe('updates'),
     info: async () => info, setAppearance: () => {}, droppedFilePaths: () => [], reportTerminalView: () => {},
     createTerminal: async (options: any) => {const terminal = {...options, pid: 100 + terminals.size}; terminals.set(options.id, terminal); return terminal;},
     write: () => {}, resize: () => {}, closeTerminal: async (id: string) => {terminals.delete(id);},

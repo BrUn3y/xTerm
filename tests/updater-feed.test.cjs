@@ -33,6 +33,8 @@ test('real GitHub provider selects stable metadata and verifies downloads on an 
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'xterm-feed-'));
   const artifact = Buffer.from('isolated test artifact - never executable');
   const checksum = createHash('sha512').update(artifact).digest('base64');
+  const arch = process.arch;
+  const channel = arch === 'x64' ? 'latest-linux.yml' : `latest-linux-${arch}.yml`;
   let broken = false, requests = [];
   const server = http.createServer((request, response) => {
     requests.push(request.url);
@@ -40,7 +42,7 @@ test('real GitHub provider selects stable metadata and verifies downloads on an 
     if (url.endsWith('.atom')) {
       response.end('<feed><entry><title>Beta</title><link href="https://github.com/BrUn3y/xTerm/releases/tag/v0.6.0-beta.1"/><content>beta</content></entry><entry><title>Stable</title><link href="https://github.com/BrUn3y/xTerm/releases/tag/v0.5.0"/><content>stable notes</content></entry></feed>');
     } else if (url.endsWith('/latest')) response.end('{"tag_name":"v0.5.0"}');
-    else if (url.endsWith('/latest-linux.yml')) response.end(`version: 0.5.0\nfiles:\n  - url: xTerm-0.5.0-x64.AppImage\n    sha512: ${checksum}\n`);
+    else if (url.endsWith(`/${channel}`)) response.end(`version: 0.5.0\nfiles:\n  - url: xTerm-0.5.0-${arch}.AppImage\n    sha512: ${checksum}\n`);
     else if (url.endsWith('.AppImage')) response.end(broken ? Buffer.from('tampered artifact') : artifact);
     else { response.statusCode = 404; response.end('not found'); }
   });
@@ -54,14 +56,17 @@ test('real GitHub provider selects stable metadata and verifies downloads on an 
   process.env.APPIMAGE = path.join(directory, 'old.AppImage');
   t.after(() => { if (oldAppImage === undefined) delete process.env.APPIMAGE; else process.env.APPIMAGE = oldAppImage; });
   const updater = new AppImageUpdater(undefined, app);
+  // Exercise Linux's provider/installer on every test host, including macOS.
+  updater._testOnlyOptions = { platform: 'linux' };
   updater.httpExecutor = new IsolatedExecutor(server.address().port);
   updater.disableDifferentialDownload = true;
   updater.logger = null;
-  const controller = new UpdateController({ updater, installed: '0.4.0', enabled: true, platform: 'linux', arch: 'x64', notify: () => {}, confirmRestart: async () => false });
+  const controller = new UpdateController({ updater, installed: '0.4.0', enabled: true, platform: 'linux', arch, notify: () => {}, confirmRestart: async () => false });
   t.after(() => controller.dispose());
   await controller.check();
   assert.equal(controller.snapshot().status, 'available');
   assert.equal(controller.snapshot().version, '0.5.0');
+  assert.ok(requests.some(url => url.endsWith(`/${channel}`)));
   assert.equal(requests.some(url => url.endsWith('.AppImage')), false);
   broken = true;
   await controller.download();

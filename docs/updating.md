@@ -14,11 +14,15 @@ manual check. Only newer stable semantic versions are accepted; the public
 GitHub provider excludes drafts and prereleases. Metadata must include a matching
 architecture/platform artifact and SHA512. Missing assets, offline failures and
 invalid metadata leave the terminal usable and expose a sanitized retry state.
+Download and native verification failures resume the six-hour check schedule;
+they never retry downloads or installation automatically.
 
 Downloads require **Download update**. No background download or install-on-quit
 is enabled. **Later** persists a version-specific deferral in the existing
 Electron user-data directory; a manual check reveals that version again. The
 notification remains in the workspace until deferred. Progress is displayed.
+After hiding download progress with **Later**, the titlebar check action reveals
+the existing download without starting another request.
 There is no native-notification dependency.
 
 **Restart and update** opens a native warning with Cancel as the default. It
@@ -47,9 +51,9 @@ redirected exclusively to a loopback fixture; they never contact production.
 The existing v0.4.0 app has no updater. Users must install the first properly
 signed updater-enabled release manually once. In-app upgrades start with that
 release; this code cannot retroactively update a running v0.4.0 installation.
-The signing status of the existing public v0.4.0 bundle has not been established.
-As of November 24, 2026, its assets contain DMG, ZIP and SHA256SUMS.txt but no
-latest-mac.yml. Do not advertise it as an updater bootstrap.
+The release review records the existing public v0.4.0 as unsigned and not
+notarized. Its assets contain DMG, ZIP and SHA256SUMS.txt but no latest-mac.yml.
+Do not advertise it or the unsigned v0.5.0-beta.1 preview as an updater bootstrap.
 
 ## Building Release Artifacts
 
@@ -140,7 +144,40 @@ deferral persistence, backoff, sender/payload validation, sanitized states and
 native-confirmation cancellation. A real GitHubProvider on an isolated loopback
 feed covers stable selection and checksum rejection/retry. Those are automated
 tests, not macOS signature/notarization or relaunch evidence. See the PR and
-overnight issue-5-status.md for actual commands/results and screenshots.
+overnight issue-5-status.md for the initial Linux commands/results and screenshots.
+
+### macOS arm64 review, November 24, 2026
+
+The draft branch incorporates `main` at `26d39c1`, including the published
+preview's keyboard, SSH and GitHub features, without assigning a new app version
+or changing either preview release workflow. The published preview itself still
+excludes this updater.
+
+- `npm ci`: native node-pty rebuild passed.
+- `npm test`: 72 passed, no skips. The real GitHub provider fixture routes only
+  to loopback and uses the host architecture with an explicit Linux provider
+  platform, so it also runs on macOS. Includes regression tests for resuming
+  periodic checks after download/verification failure and revealing a deferred
+  download without another network request, plus reopening unavailable notices.
+- `npm run build`: TypeScript and Vite passed.
+- `npm run test:pty`: real zsh, bash and harness PTY tests passed; the controlled
+  OpenSSH server test was skipped because its opt-in fixture was not enabled.
+- `npm run test:updates-ui`: eight states in Light/Dark at 1480x940, 980x620 and
+  780x720 passed geometry and axe checks. Deferring and revealing an in-progress
+  download is covered. Native restart cancellation is simulated in this test.
+- GitHub and SSH UI regression scripts passed at all three sizes in Light/Dark.
+- `npm run test:updates-desktop`: native macOS Electron development smoke passed
+  with an explicitly isolated user-data directory, sandbox/contextIsolation,
+  rejected invalid IPC, disabled update operations, Light/Dark and real bash
+  command output. This is not a packaged update test.
+- `npm audit --omit=dev`: zero vulnerabilities.
+- `security find-identity -v -p codesigning`: zero valid identities. The release
+  preflight rejected the missing Developer ID configuration. No signed upgrade,
+  notarization, native signature staging or post-upgrade persistence was tested.
+
+Local screenshots are under `artifacts/update-ui/`, `artifacts/update-desktop/`,
+`artifacts/github-ui/` and `artifacts/ssh-ui/` in the PR worktree. They are ignored
+build artifacts, not proof of a signed upgrade.
 
 Reproduce interface checks after `npm ci`:
 

@@ -117,10 +117,18 @@ class UpdateController {
   fail(error) {
     if (this.disposed || !this.enabled) return;
     this.publish({ status: 'error', message: safeError(error), progress: null });
+    // Downloads clear the check timer. Resume checks after a failed download or
+    // late native verification error; retrying a download still requires consent.
+    this.schedule(PERIOD);
   }
   async check(manual = true) {
-    if (!this.enabled || this.busy || this.confirming || ['ready', 'installing'].includes(this.state.status)) {
-      if (manual && this.state.status === 'ready') this.publish({ dismissed: false });
+    if (this.disposed) return this.snapshot();
+    if (!this.enabled) {
+      if (manual) this.publish({ dismissed: false });
+      return this.snapshot();
+    }
+    if (this.busy || this.confirming || ['ready', 'installing'].includes(this.state.status)) {
+      if (manual && this.state.status !== 'installing') this.publish({ dismissed: false });
       return this.snapshot();
     }
     this.busy = true;

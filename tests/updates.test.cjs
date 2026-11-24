@@ -22,7 +22,8 @@ function fixture(overrides = {}) {
   const updater = new UpdaterDouble(), timers = [], saved = [], events = [];
   const controller = new UpdateController({ updater, installed: '0.4.0', enabled: true, platform: 'darwin', arch: 'arm64',
     store: { load: () => [], save: value => saved.push(value) }, notify: state => events.push(state),
-    setTimer: (fn, delay) => { const timer = { fn, delay }; timers.push(timer); return timer; }, clearTimer: () => {},
+    setTimer: (fn, delay) => { const timer = { fn, delay, active: true }; timers.push(timer); return timer; },
+    clearTimer: timer => { if (timer) timer.active = false; },
     ...overrides });
   return { updater, controller, timers, saved, events };
 }
@@ -61,6 +62,14 @@ test('development disables every operation and does not load a real updater', as
   for (const action of ['check', 'download', 'restart']) assert.equal((await controller[action]()).status, 'unavailable');
   assert.equal(timers.length, 0);
 });
+test('manual check reveals an unavailable notice after dismissal without loading an updater', async () => {
+  const { controller, timers } = fixture({ updater: null, enabled: false, unavailableReason: 'Development' });
+  controller.later();
+  assert.equal((await controller.check(false)).dismissed, true);
+  assert.equal((await controller.check(true)).dismissed, false);
+  assert.equal(controller.snapshot().status, 'unavailable');
+  assert.equal(timers.length, 0);
+});
 test('startup, periodic checks and bounded backoff', async () => {
   const { updater, controller, timers } = fixture();
   controller.start(); assert.equal(timers.at(-1).delay, 15_000);
@@ -95,6 +104,40 @@ test('deferring during a download stays deferred when the verified download beco
   assert.equal(controller.snapshot().status, 'ready');
   assert.equal(controller.snapshot().dismissed, true);
   await controller.check(true); assert.equal(controller.snapshot().dismissed, false);
+});
+test('manual check reveals a deferred download without starting another request', async () => {
+  let finish;
+  const { updater, controller } = fixture();
+  await controller.check();
+  updater.downloadUpdate = () => new Promise(resolve => { finish = resolve; });
+  const pending = controller.download();
+  controller.later();
+  assert.equal(controller.snapshot().dismissed, true);
+  const state = await controller.check(true);
+  assert.equal(state.status, 'downloading');
+  assert.equal(state.dismissed, false);
+  assert.equal(updater.checks, 1);
+  finish(); await pending;
+});
+test('failed downloads and late verification errors resume periodic checks without automatic download', async () => {
+  const { updater, controller, timers } = fixture();
+  await controller.check();
+  updater.downloadUpdate = async () => { updater.downloads++; throw new Error('interrupted'); };
+  await controller.download();
+  assert.equal(controller.snapshot().status, 'error');
+  assert.equal(timers.at(-1).active, true);
+  assert.equal(timers.at(-1).delay, PERIOD);
+  await timers.at(-1).fn();
+  assert.equal(updater.checks, 2);
+  assert.equal(updater.downloads, 1);
+  assert.equal(controller.snapshot().status, 'available');
+  updater.downloadUpdate = async () => {};
+  await controller.download();
+  assert.equal(controller.snapshot().status, 'ready');
+  updater.emit('error', { code: 'ERR_UPDATER_INVALID_SIGNATURE' });
+  assert.equal(controller.snapshot().status, 'error');
+  assert.equal(timers.at(-1).active, true);
+  assert.equal(timers.at(-1).delay, PERIOD);
 });
 test('download progress is bounded and downloaded paths/raw release notes never cross the bridge', async () => {
   const { controller, updater, events } = fixture();

@@ -7,7 +7,7 @@ A desktop terminal built with Electron, React, TypeScript, xterm.js, and node-pt
 The `0.5.0-beta.1` preview adds an active-repository GitHub link, an SSH sidebar
 and negotiated Shift+Enter input. It pins a prerelease xterm.js core; see
 [preview notes](docs/releases/v0.5.0-beta.1.md) for validation and limitations.
-The stable download above remains `0.4.0`. This preview does not include the
+The stable download above remains `0.4.0`. The published preview does not include the
 unfinished in-app updater or the official IBM Bob avatar.
 
 ## Run
@@ -36,7 +36,8 @@ Local builds are not notarized for public distribution. Publishing requires conf
 
 ## In-app updates (under review)
 
-Packaged builds can check stable GitHub Releases from the titlebar update button,
+This branch contains a draft updater implementation. Packaged builds can check
+stable GitHub Releases from the titlebar update button,
 command palette or Help menu. A persistent notice offers Download update and
 Later, shows progress, and requires native confirmation before Restart and
 update. Running terminal processes will end and are not restored; preferences

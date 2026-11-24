@@ -13,7 +13,7 @@ try {
     const context = await browser.newContext({ viewport });
     await context.addInitScript(() => {
       const callbacks = new Set();
-      const state = { status: 'available', installedVersion: '0.4.0', version: '0.5.0',
+      const state = { status: 'available', installedVersion: '0.5.0-beta.1', version: '0.5.0',
         releaseUrl: 'https://github.com/BrUn3y/xTerm/releases/tag/v0.5.0', progress: null, dismissed: false, message: '' };
       window.updateTest = {
         state, calls: [], emit(value) { Object.assign(state, value); for (const callback of callbacks) callback({ ...state }); },
@@ -22,20 +22,26 @@ try {
       const unsubscribe = () => () => {};
       window.desktop = {
         info: async () => ({ home: '/home/test', cwd: '/work/project', shell: '/bin/bash', platform: 'darwin',
-          hostname: 'test', username: 'test', version: '0.4.0', shells: ['/bin/bash'] }),
+          hostname: 'test', username: 'test', version: '0.5.0-beta.1', shells: ['/bin/bash'] }),
         updateState: async () => ({ ...state }),
         onUpdateState: callback => { callbacks.add(callback); return () => callbacks.delete(callback); },
         updateAction: async action => {
           window.updateTest.calls.push(action);
           if (action === 'later') window.updateTest.emit({ dismissed: true });
           if (action === 'check') window.updateTest.emit({ dismissed: false });
-          if (action === 'download') window.updateTest.emit({ status: 'downloading', progress: 43 });
+          if (action === 'download') {
+            window.updateTest.emit({ status: 'downloading', progress: 43 });
+            return new Promise(resolve => { window.updateTest.finishDownload = () => {
+              window.updateTest.emit({ status: 'ready', progress: 100 });
+              resolve({ ...state });
+            }; });
+          }
           // Native confirmation is intentionally simulated as cancelled.
           if (action === 'restart') window.updateTest.emit({ status: 'ready', message: 'Native confirmation cancelled in test.' });
           return { ...state };
         },
         setAppearance: () => {}, openExternal: async value => window.updateTest.calls.push(value),
-        onAgent: unsubscribe, onCommand: unsubscribe, onFilesChanged: unsubscribe,
+        onAgent: unsubscribe, onSsh: unsubscribe, onCommand: unsubscribe, onFilesChanged: unsubscribe,
         onData: unsubscribe, onCwd: unsubscribe, onExit: unsubscribe,
         createTerminal: async value => ({ ...value, pid: 1234 }), closeTerminal: async () => {},
         write: () => {}, resize: () => {}, reportTerminalView: () => {},
@@ -71,7 +77,8 @@ try {
         assert.ok(geometry.buttons.every(Boolean), `${theme}/${status}/${viewport.width}: buttons fit`);
         const a11y = await new AxeBuilder({ page }).include('.update-notice')
           .withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze();
-        assert.deepEqual(a11y.violations.map(item => ({ id: item.id, impact: item.impact })), [],
+        assert.deepEqual(a11y.violations.map(item => ({ id: item.id, impact: item.impact,
+          nodes: item.nodes.map(node => ({ target: node.target, failureSummary: node.failureSummary })) })), [],
           `${theme}/${status}/${viewport.width}: accessibility`);
         if (['available', 'downloading', 'ready', 'error'].includes(status)) {
           await page.screenshot({ path: path.join(output, `${viewport.width}-${theme}-${status}.png`) });
@@ -84,10 +91,14 @@ try {
     await page.getByRole('button', { name: 'Check for updates', exact: true }).click();
     await notice.getByRole('button', { name: 'Download update' }).click();
     await page.getByRole('progressbar', { name: 'Update download progress' }).waitFor();
-    await page.evaluate(() => window.updateTest.emit({ status: 'ready', progress: 100 }));
+    await notice.getByRole('button', { name: 'Later' }).click();
+    await notice.waitFor({ state: 'hidden' });
+    await page.getByRole('button', { name: 'Check for updates', exact: true }).click();
+    await page.getByRole('progressbar', { name: 'Update download progress' }).waitFor();
+    await page.evaluate(() => window.updateTest.finishDownload());
     await notice.getByRole('button', { name: 'Restart and update' }).click();
     await notice.getByText('Native confirmation cancelled in test.').waitFor();
-    assert.deepEqual(await page.evaluate(() => window.updateTest.calls), ['later', 'check', 'download', 'restart']);
+    assert.deepEqual(await page.evaluate(() => window.updateTest.calls), ['later', 'check', 'download', 'later', 'check', 'restart']);
     assert.deepEqual(await page.evaluate(() => JSON.parse(localStorage.getItem('xterm.projects'))), ['/work/alpha', '/work/beta']);
     assert.equal(await page.evaluate(() => JSON.parse(localStorage.getItem('xterm.settings')).theme), 'dark');
     assert.deepEqual(errors, []);

@@ -25,7 +25,8 @@ export default function App() {
   const [info, setInfo] = useState<AppInfo | null>(null);
   const [update, setUpdate] = useState<UpdateState>({ status: 'unavailable', installedVersion: '0.4.0', version: null,
     releaseUrl: null, progress: null, dismissed: true, message: 'Updates are disabled in web previews.' });
-  const [updateBusy, setUpdateBusy] = useState(false);
+  const [pendingUpdates, setPendingUpdates] = useState(0);
+  const updateBusy = pendingUpdates > 0;
   useEffect(() => {
     const preventFileNavigation = (event: DragEvent) => {
       if (event.dataTransfer && ['Files',FILE_PATH_MIME,'text/uri-list'].some(type => event.dataTransfer!.types.includes(type))) event.preventDefault();
@@ -67,10 +68,10 @@ export default function App() {
   }, []);
   const updateAction = useCallback(async (action: UpdateAction) => {
     if (!window.desktop) { setUpdate(current => ({ ...current, dismissed: false })); return; }
-    if (action !== 'later') setUpdateBusy(true);
+    if (action !== 'later') setPendingUpdates(count => count + 1);
     try { setUpdate(await window.desktop.updateAction(action)); }
     catch { notify('Could not contact the updater. Your terminals are still running.'); }
-    finally { if (action !== 'later') setUpdateBusy(false); }
+    finally { if (action !== 'later') setPendingUpdates(count => count - 1); }
   }, [notify]);
   useEffect(() => {
     let alive = true, received = false;
@@ -209,7 +210,7 @@ export default function App() {
   const activeFont = fonts.find(font => font.value === settings.font)?.name || 'Monospace';
   const totalSessions = tabs.reduce((total, tab) => total + tab.panes.length, 0);
   return <div className={`app theme-${settings.theme}`}>
-    <div className="titlebar"><div className="traffic-space">{info?.platform !== 'darwin' && <div className="window-buttons"><button title="Minimize" onClick={() => window.desktop?.windowAction('minimize')}><Minus size={12}/></button><button title="Maximize" onClick={() => window.desktop?.windowAction('maximize')}><Square size={10}/></button><button title="Close window" onClick={() => window.desktop?.windowAction('close')}><X size={12}/></button></div>}</div><span className="titlebar-center"><span className="titlebar-emblem">⌘</span> A SPACE TO CREATE</span><div className="titlebar-right"><span className="titlebar-version">v{info?.version || '0.4.0'}</span><button className={['available', 'ready'].includes(update.status) ? 'update-indicator' : ''} title="Check for updates" aria-label="Check for updates" disabled={updateBusy || ['checking', 'downloading', 'installing'].includes(update.status)} onClick={() => void updateAction('check')}><RefreshCw size={12}/></button><button title="Command palette (⌘ K)" onClick={() => showOverlay('palette')}><Command size={12}/><span>K</span></button></div></div>
+    <div className="titlebar"><div className="traffic-space">{info?.platform !== 'darwin' && <div className="window-buttons"><button title="Minimize" onClick={() => window.desktop?.windowAction('minimize')}><Minus size={12}/></button><button title="Maximize" onClick={() => window.desktop?.windowAction('maximize')}><Square size={10}/></button><button title="Close window" onClick={() => window.desktop?.windowAction('close')}><X size={12}/></button></div>}</div><span className="titlebar-center"><span className="titlebar-emblem">⌘</span> A SPACE TO CREATE</span><div className="titlebar-right"><span className="titlebar-version">v{info?.version || '0.4.0'}</span><button className={['available', 'ready'].includes(update.status) ? 'update-indicator' : ''} title="Check for updates" aria-label="Check for updates" disabled={update.status === 'installing' || (!update.dismissed && (updateBusy || ['checking', 'downloading'].includes(update.status)))} onClick={() => void updateAction('check')}><RefreshCw size={12}/></button><button title="Command palette (⌘ K)" onClick={() => showOverlay('palette')}><Command size={12}/><span>K</span></button></div></div>
     <div className="app-body">
       <aside className="sidebar">
         <div className="brand"><div className="brand-symbol" aria-hidden="true">x<span>_</span></div><span>xTerm<span className="brand-dot">®</span></span><span className="brand-label">TERMINAL<br/>REIMAGINED</span></div>
