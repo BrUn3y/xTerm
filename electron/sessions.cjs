@@ -23,6 +23,7 @@ function createSessionManager({send, defaultCwd, version}) {
   const sessions = new Map();
   const pending = new Map();
   const events = new EventEmitter();
+  let pollingAgents = false;
 
   async function refreshAgents() {
     if (pollingAgents || !sessions.size || process.platform === 'win32') return;
