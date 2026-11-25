@@ -545,7 +545,7 @@ h2 {
 }
 .remote-section {
   display: grid;
-  grid-template-columns: minmax(0, 1.35fr) minmax(225px, .85fr);
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr);
   align-items: center;
   gap: clamp(26px, 6vw, 88px);
   border-bottom: 1px solid var(--line);
@@ -577,14 +577,21 @@ h2 {
   text-decoration: underline;
   text-underline-offset: 3px;
 }
+.remote-gallery {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+  gap: clamp(12px, 2.2vw, 24px);
+  padding: clamp(14px, 2.2vw, 24px);
+  background: #eeeee7;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+}
 .remote-preview {
   display: grid;
   justify-items: center;
   gap: 10px;
-  padding: 24px;
-  background: #eeeee7;
-  border: 1px solid var(--line);
-  border-radius: 6px;
+  text-align: center;
 }
 .remote-preview .screenshot-link {
   width: min(100%, 240px);
@@ -597,6 +604,15 @@ h2 {
 @media (max-width: 760px) {
   .remote-section {
     grid-template-columns: 1fr;
+  }
+}
+@media (max-width: 440px) {
+  .remote-gallery {
+    grid-template-columns: 1fr;
+    justify-items: center;
+  }
+  .remote-preview {
+    width: min(100%, 240px);
   }
 }
 .download-section {
