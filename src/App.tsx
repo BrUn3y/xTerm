@@ -1,14 +1,15 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ArrowRight, ArrowUpRight, ChevronDown, ChevronRight, CircleHelp, Command, CornerDownLeft, Folder, FolderOpen, Keyboard, LayoutGrid, ListTree, LoaderCircle, Minus, Moon, PanelLeftClose, PanelRightClose, PanelRightOpen, Plus, Search, Settings2, SlidersHorizontal, Square, SquareTerminal, Sun, TerminalSquare, Trash2, X, Zap } from 'lucide-react';
+import { ArrowRight, ArrowUpRight, ChevronDown, ChevronRight, CircleHelp, Command, CornerDownLeft, Folder, FolderOpen, Keyboard, LayoutGrid, ListTree, LoaderCircle, Minus, Moon, PanelLeftClose, PanelRightClose, PanelRightOpen, Plus, Radio, Search, Settings2, SlidersHorizontal, Square, SquareTerminal, Sun, TerminalSquare, Trash2, X, Zap } from 'lucide-react';
 import TerminalPane from './components/TerminalPane';
 import Explorer from './components/Explorer';
 import SettingsPanel from './components/SettingsPanel';
 import AgentCard from './components/AgentCard';
 import SshCard from './components/SshCard';
+import RemoteModeCard from './components/RemoteModeCard';
 import GitHubLink from './components/GitHubLink';
 import {FILE_PATH_MIME} from './lib/dropped-paths.mjs';
 import { basename, fonts, loadSettings, shortPath } from './settings';
-import type { AppInfo, Pane, Settings, Tab, TerminalHandle } from './types';
+import type { AppInfo, Pane, RemoteState, Settings, Tab, TerminalHandle } from './types';
 
 const uid = () => crypto.randomUUID();
 const quickCommands = [
@@ -37,6 +38,9 @@ export default function App() {
   const [overlay, setOverlay] = useState<Overlay>(null);
   const [explorer, setExplorer] = useState(true);
   const [search, setSearch] = useState(false);
+  const [remoteOpen, setRemoteOpen] = useState(false);
+  const [remoteState, setRemoteState] = useState<RemoteState>({status: 'disabled', message: ''});
+  const remoteSlot = useRef<HTMLDivElement>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchFound, setSearchFound] = useState(true);
   const [paletteQuery, setPaletteQuery] = useState('');
@@ -93,9 +97,32 @@ export default function App() {
   }, []);
   useEffect(() => window.desktop?.onAgent(({id, agent}) => updatePane(id, {agent})), [updatePane]);
   useEffect(() => window.desktop?.onSsh(({id, ssh}) => updatePane(id, {ssh})), [updatePane]);
+  useEffect(() => window.desktop?.onControl(({id, remote}) => updatePane(id, {remoteControl: remote})), [updatePane]);
+  useEffect(() => {
+    const remote = window.desktop?.remote;
+    if (!remote) return;
+    const off = remote.onState(setRemoteState);
+    void remote.state().then(setRemoteState);
+    return off;
+  }, []);
+  const remoteResult = remoteState.status === 'disabled' && ['Remote Mode disabled.', 'Remote Mode expired.'].includes(remoteState.message);
+  useEffect(() => {
+    if (!remoteResult) return;
+    const timer = setTimeout(() => setRemoteOpen(false), 1800);
+    return () => clearTimeout(timer);
+  }, [remoteResult]);
+  const openRemote = () => {
+    if (remoteState.status === 'disabled') setRemoteState({status: 'disabled', message: ''});
+    setRemoteOpen(true);
+    requestAnimationFrame(() => remoteSlot.current?.focus());
+  };
+  const closeSession = (id: string) => {
+    void window.desktop?.closeTerminal(id).catch(error => notify(String(error)));
+  };
   const onHandle = useCallback((id: string, handle: TerminalHandle | null) => { if (handle) handles.current.set(id, handle); else handles.current.delete(id); }, []);
   const focusPane = (id: string) => setTabs(current => current.map(tab => tab.id === activeTabId ? {...tab, activePane: id} : tab));
   const closeTab = (id = activeTabId) => {
+    tabs.find(tab => tab.id === id)?.panes.forEach(pane => closeSession(pane.id));
     const remaining = tabs.filter(tab => tab.id !== id);
     if (!remaining.length) {
       const pane: Pane = {id: uid(), cwd: info?.cwd || cwd, shell, status: 'connecting'};
@@ -109,9 +136,11 @@ export default function App() {
   };
   const closePane = (id: string) => {
     if (activeTab?.panes.length === 1) { closeTab(); return; }
+    closeSession(id);
     setTabs(current => current.map(tab => tab.id === activeTabId ? {...tab, panes: tab.panes.filter(pane => pane.id !== id), activePane: tab.activePane === id ? tab.panes.find(pane => pane.id !== id)!.id : tab.activePane} : tab));
   };
   const restartPane = (id: string) => {
+    closeSession(id);
     const replacementId = uid();
     setTabs(current => current.map(tab => ({...tab, activePane: tab.activePane === id ? replacementId : tab.activePane, panes: tab.panes.map(pane => pane.id === id ? {...pane, id: replacementId, status: 'connecting', pid: undefined} : pane)})));
   };
@@ -138,7 +167,9 @@ export default function App() {
   const runSearch = (value = searchQuery, previous = false) => { setSearchFound(!value || !!activeHandle()?.find(value, previous)); };
   const closeSearch = () => { setSearch(false); setSearchQuery(''); activeHandle()?.clearSearch(); activeHandle()?.focus(); };
   const showOverlay = (value: Overlay) => { setOverlay(value); setPaletteQuery(''); setPaletteIndex(0); };
+  const remoteAction = remoteState.status === 'disabled' ? 'Enable Remote Mode' : 'Show Remote Mode';
   const actions = [
+    ...(window.desktop ? [{name: remoteAction, detail: 'Share selected sessions with your phone', shortcut: '', icon: Radio, run: openRemote}] : []),
     {name: settings.theme === 'light' ? 'Switch to dark mode' : 'Switch to light mode', detail: 'Change the appearance of your entire workspace', shortcut: '', icon: settings.theme === 'light' ? Moon : Sun, run: toggleTheme},
     {name: 'New tab', detail: 'A new session of your shell', shortcut: '⌘ T', icon: Plus, run: () => newTab()},
     {name: 'Split terminal', detail: 'Two sessions, one workspace', shortcut: '⌘ D', icon: PanelLeftClose, run: split},
@@ -204,14 +235,18 @@ export default function App() {
           <div className="session-list">{tabs.map((tab, index) => <button key={tab.id} className={`session-item ${tab.id === activeTabId ? 'selected' : ''}`} onClick={() => setActiveTabId(tab.id)}><span className="session-line"/><TerminalSquare size={14}/><span>{basename(tab.panes.find(pane => pane.id === tab.activePane)?.shell || shell)}<small>{tab.panes.length > 1 ? ' / split' : ` / ${String(index + 1).padStart(2,'0')}`}</small></span><i className={tab.panes.some(pane => pane.status === 'running') ? 'live-dot' : 'idle-dot'}/></button>)}</div>
           <button className="new-session" onClick={() => newTab()}><Plus size={13}/><span>New session</span><kbd>⌘ T</kbd></button>
         </div>
-        <div className="harness-slot">{activePane?.ssh ? <SshCard ssh={activePane.ssh} agent={activePane.agent || null}/> : <AgentCard agent={activePane?.agent || null}/>}</div>
+        <div className="harness-slot" ref={remoteSlot} tabIndex={-1}>
+          {remoteOpen || remoteState.status !== 'disabled'
+            ? <RemoteModeCard state={remoteState} panes={tabs.flatMap(tab => tab.panes)} selected={activePane} motion={settings.motion} onClose={() => setRemoteOpen(false)}/>
+            : activePane?.ssh ? <SshCard ssh={activePane.ssh} agent={activePane.agent || null}/> : <AgentCard agent={activePane?.agent || null}/>}
+        </div>
         <div className="sidebar-footer"><button onClick={() => showOverlay('settings')}><Settings2 size={16}/><span>Preferences</span><kbd>⌘ ,</kbd></button><button className="help-button" title="Keyboard shortcuts" onClick={() => showOverlay('help')}><CircleHelp size={16}/></button></div>
       </aside>
       <main className="main-workspace">
         <header className="workspace-header"><div><div className="workspace-eyebrow"><span className="orange-square"/> YOUR SPACE. YOUR PACE.</div><div className="workspace-title"><h1>{basename(cwd) || 'My workspace'}<span>_</span></h1><span className="workspace-badge"><i className="live-dot"/> LOCAL</span></div></div><div className="workspace-header-actions">
           {activePane && <GitHubLink key={`${activeTabId}:${activePane.id}:${activePane.cwd}`} cwd={activePane.cwd} refreshKey={refreshKey} onError={notify}/>}
           <button className="theme-toggle" type="button" title={settings.theme === 'light' ? 'Switch to dark mode' : 'Switch to light mode'} aria-label={settings.theme === 'light' ? 'Switch to dark mode' : 'Switch to light mode'} aria-pressed={settings.theme === 'dark'} onClick={toggleTheme}>{settings.theme === 'light' ? <Moon size={15}/> : <Sun size={15}/>}<span>{settings.theme === 'light' ? 'Dark mode' : 'Light mode'}</span></button><button className="open-folder-button" onClick={() => void chooseFolder()}><FolderOpen size={15}/><span>Open folder</span><ArrowUpRight size={14}/></button></div></header>
-        <div className="workspace-toolbar"><div className="breadcrumb"><Folder size={13}/><span>{home && cwd ? shortPath(cwd, home).split('/').slice(0,-1).join('/') || '~' : '~'}</span><ChevronRight size={12}/><strong>{basename(cwd) || 'workspace'}</strong></div><div className="toolbar-actions"><button title="Search terminal (⌘ F)" className={`icon-button ${search ? 'active' : ''}`} onClick={openSearch}><Search size={15}/></button><button title="Split pane (⌘ D). Click again to change orientation." className="icon-button" onClick={split}><PanelLeftClose size={16}/></button><span className="toolbar-divider"/><button title="Appearance settings" className="icon-button" onClick={() => showOverlay('settings')}><SlidersHorizontal size={15}/></button><button title={explorer ? 'Hide explorer (⌘ B)' : 'Show explorer (⌘ B)'} className={`icon-button ${explorer ? 'active' : ''}`} onClick={() => setExplorer(!explorer)}>{explorer ? <PanelRightClose size={16}/> : <PanelRightOpen size={16}/>}</button></div></div>
+        <div className="workspace-toolbar"><div className="breadcrumb"><Folder size={13}/><span>{home && cwd ? shortPath(cwd, home).split('/').slice(0,-1).join('/') || '~' : '~'}</span><ChevronRight size={12}/><strong>{basename(cwd) || 'workspace'}</strong></div><div className="toolbar-actions">{window.desktop && <button type="button" className="remote-toolbar" aria-pressed={remoteOpen || remoteState.status !== 'disabled'} onClick={openRemote}><Radio size={14}/>{remoteAction}</button>}<button title="Search terminal (⌘ F)" className={`icon-button ${search ? 'active' : ''}`} onClick={openSearch}><Search size={15}/></button><button title="Split pane (⌘ D). Click again to change orientation." className="icon-button" onClick={split}><PanelLeftClose size={16}/></button><span className="toolbar-divider"/><button title="Appearance settings" className="icon-button" onClick={() => showOverlay('settings')}><SlidersHorizontal size={15}/></button><button title={explorer ? 'Hide explorer (⌘ B)' : 'Show explorer (⌘ B)'} className={`icon-button ${explorer ? 'active' : ''}`} onClick={() => setExplorer(!explorer)}>{explorer ? <PanelRightClose size={16}/> : <PanelRightOpen size={16}/>}</button></div></div>
         <div className="work-area">
           <div className={`terminal-workspace background-${settings.background} ${settings.motion ? '' : 'motion-off'} ${activePane?.agent?.status === 'working' ? 'agent-working' : ''}`}>
             <div className="terminal-tabs"><div className="tabs-scroll" role="tablist" aria-label="Terminal sessions">{tabs.map((tab, index) => <div key={tab.id} role="tab" aria-selected={tab.id === activeTabId} tabIndex={0} className={`terminal-tab ${tab.id === activeTabId ? 'active' : ''}`} onClick={() => setActiveTabId(tab.id)} onKeyDown={event => { if (event.key === 'Enter' || event.key === ' ') setActiveTabId(tab.id); }}><TerminalSquare size={13}/><span>{basename(tab.panes.find(pane => pane.id === tab.activePane)?.cwd || '')}<small> {String(index + 1).padStart(2,'0')}</small></span><button title="Close tab" onClick={event => { event.stopPropagation(); closeTab(tab.id); }}><X size={12}/></button></div>)}</div><button className="tab-add" title="New tab (⌘ T)" onClick={() => newTab()}><Plus size={16}/></button><div className="tabs-end"><span>⌘</span><span>_</span></div></div>

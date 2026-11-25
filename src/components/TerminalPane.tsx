@@ -8,6 +8,7 @@ import type { Pane, Settings, TerminalHandle } from '../types';
 import { themeColors, basename } from '../settings';
 import { adaptTerminalRows } from '../terminal-appearance';
 import {FILE_PATH_MIME, pathsFromDropData, quoteDroppedPaths} from '../lib/dropped-paths.mjs';
+import {bindTerminalInput} from '../lib/terminal-input';
 import {createAppKeyHandler} from '../lib/terminal-keyboard.mjs';
 
 interface Props {
@@ -50,7 +51,7 @@ export default function TerminalPane(props: Props) {
       cursorStyle: settings.cursor, cursorBlink: true, allowTransparency: true,
       theme: themeColors[settings.theme], scrollback: settings.scrollback,
       macOptionIsMeta: true, macOptionClickForcesSelection: true, rightClickSelectsWord: true,
-      allowProposedApi: false, minimumContrastRatio: 4.5,
+      allowProposedApi: false, logLevel: 'off', minimumContrastRatio: 4.5,
       // Applications opt in; unnegotiated shells keep their legacy key encoding.
       vtExtensions: { kittyKeyboard: true },
     });
@@ -96,7 +97,8 @@ export default function TerminalPane(props: Props) {
         current.current.onUpdate(pane.id, {status: 'exited'});
       }
     });
-    const dataListener = terminal.onData(data => desktop.write(pane.id, data));
+    const dataListener = bindTerminalInput(terminal, data => desktop.write(pane.id, data),
+      data => desktop.respond(pane.id, data));
     const resizeListener = terminal.onResize(({cols, rows}) => { if (created) desktop.resize(pane.id, cols, rows); });
     const safeFit = () => {
       if (disposed || !container.current?.offsetWidth || !container.current?.offsetHeight) return;
@@ -104,7 +106,7 @@ export default function TerminalPane(props: Props) {
     };
     const observer = new ResizeObserver(safeFit); observer.observe(container.current);
     current.current.onHandle(pane.id, {
-      focus: () => terminal.focus(), clear: () => { terminal.clear(); terminal.focus(); },
+      focus: () => terminal.focus(), clear: () => { terminal.clear(); desktop.clearTerminal(pane.id); terminal.focus(); },
       paste: text => { terminal.paste(text); terminal.focus(); },
       find: (value, previous) => previous ? search.findPrevious(value, {incremental: true}) : search.findNext(value, {incremental: true}),
       clearSearch: () => search.clearDecorations(),
@@ -132,7 +134,6 @@ export default function TerminalPane(props: Props) {
       clearTimeout(viewTimer);
       dataListener.dispose(); resizeListener.dispose(); renderListener.dispose(); terminal.dispose();
       termRef.current = null; fitRef.current = null; current.current.onHandle(pane.id, null);
-      if (created) void desktop.closeTerminal(pane.id);
     };
   }, []);
   useEffect(() => {
@@ -151,7 +152,7 @@ export default function TerminalPane(props: Props) {
     if (!visible) return;
     const frame = requestAnimationFrame(() => {
       try { fitRef.current?.fit(); } catch {}
-      if (active) termRef.current?.focus();
+      if (active && !current.current.pane.remoteControl) termRef.current?.focus();
     });
     return () => cancelAnimationFrame(frame);
   }, [active, visible]);
@@ -162,6 +163,10 @@ export default function TerminalPane(props: Props) {
     onDrop={dropPaths}>
     {split && <div className="pane-heading"><span><i className={pane.status === 'running' ? 'live-dot' : 'idle-dot'} /> {basename(pane.cwd)} <small>{basename(pane.shell)}</small></span><button className="icon-button" title="Close pane" onClick={() => props.onClose(pane.id)}><X size={13}/></button></div>}
     <div className="shell-caption"><span><i className={pane.status === 'running' ? 'live-dot' : 'idle-dot'} /> {basename(pane.shell)} <span className="caption-separator">/</span> local session</span><span>UTF-8 <CornerDownLeft size={11}/></span></div>
+    {pane.remoteControl && <div className="remote-terminal-control">
+      <span>Remote device has keyboard control</span>
+      <button type="button" onClick={() => void window.desktop?.remote.takeControl(pane.id).then(() => termRef.current?.focus())}>Take back control</button>
+    </div>}
     <div className="terminal-mount" ref={container} aria-label={`Terminal ${basename(pane.cwd)}`} />
     {dragging && <div className="terminal-drop-hint"><ArrowDownToLine size={21}/><strong>Drop to insert path</strong><span>Files stay where they are. Press Enter to run.</span></div>}
     {dropError && <div className="terminal-drop-error" role="status"><span>{dropError}</span><button title="Dismiss drop message" onClick={() => setDropError('')}><X size={13}/></button></div>}

@@ -1,0 +1,163 @@
+.remote-card {
+  isolation: isolate;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-height: 0;
+  color: #fff;
+  font-size: 11px;
+  line-height: 1.4;
+  --remote-field: #fff1e4;
+  --remote-field-ink: #342019;
+  --remote-panel: #af442e;
+}
+.remote-card::before { animation: remote-border .45s ease-out both; }
+.remote-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 17px;
+  position: relative;
+  z-index: 1;
+}
+.remote-card-header > span {
+  font: 500 8px/1.4 var(--mono);
+  letter-spacing: .85px;
+  text-transform: uppercase;
+}
+.remote-card-header .icon-button { color: inherit; width: 22px; height: 20px; }
+.remote-card .remote-card-title {
+  flex-shrink: 0;
+  margin: 0;
+  padding: clamp(7px, 2.7cqh, 16px) 0 clamp(10px, 3cqh, 16px);
+  text-transform: uppercase;
+}
+.remote-title-break { display: block; }
+.harness-slot .remote-orbit { height: 145%; top: 22%; }
+.remote-card[data-phase="starting"] .remote-orbit { animation: remote-signal 1.4s ease-in-out infinite; }
+.remote-card[data-phase="connected"] .remote-orbit { animation: remote-signal 3.5s ease-in-out infinite; }
+.remote-card[data-phase="reconnecting"] .remote-orbit { border-style: dashed; animation: remote-signal 2.1s ease-in-out infinite; }
+.remote-card[data-phase="finished"] .remote-orbit { animation: remote-signal .6s ease-out; }
+.remote-card.remote-motion-off::before, .remote-card.remote-motion-off .remote-orbit { animation: none; }
+@keyframes remote-border { from { opacity: 0; } to { opacity: 1; } }
+@keyframes remote-signal { 0%, 100% { opacity: .4; } 50% { opacity: 1; } }
+
+.remote-card-content {
+  position: relative;
+  z-index: 1;
+  min-height: 0;
+  flex: 1 1 auto;
+  display: grid;
+  align-content: start;
+  gap: 7px;
+  padding: 0 1px 6px;
+  overflow: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #fff1df80 transparent;
+}
+.remote-card p, .remote-card small { margin: 0; overflow-wrap: anywhere; }
+.remote-card small { font-size: 10px; }
+.remote-card label { display: grid; gap: 3px; min-width: 0; }
+.remote-card-content > label, .remote-card legend { font-weight: 550; }
+.remote-card select, .remote-card fieldset { width: 100%; min-width: 0; margin: 0; font: inherit; }
+.remote-card select {
+  color-scheme: light;
+  color: var(--remote-field-ink);
+  background: var(--remote-field);
+  border: 1px solid #fff9f0;
+  border-radius: 3px;
+  padding: 3px 5px;
+  font-weight: 400;
+}
+.remote-card fieldset { border: 1px solid #fff1df80; border-radius: 3px; padding: 4px 6px; }
+.remote-session-options { display: grid; gap: 4px; }
+.remote-session-options label { display: flex; align-items: center; gap: 5px; cursor: pointer; }
+.remote-session-options span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.remote-session-options input { color-scheme: light; accent-color: var(--remote-field); flex: none; margin: 0; }
+.remote-session-details { border-block-start: 1px solid #fff1df80; }
+.remote-session-details summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 5px;
+  padding: 5px 0;
+  cursor: pointer;
+  font-weight: 550;
+  list-style: none;
+}
+.remote-session-details[open] summary svg { transform: rotate(180deg); }
+.remote-session-details .remote-session-options { padding-bottom: 4px; }
+.remote-qr { display: block; width: min(100%, 144px); height: auto; justify-self: center; background: #fff; image-rendering: pixelated; }
+.remote-qr-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 3px 8px; justify-content: space-between; }
+.remote-qr-actions small, .remote-card .remote-provider { font: 500 8px/1.4 var(--mono); letter-spacing: .2px; }
+.remote-card .remote-text-action {
+  justify-self: start;
+  padding: 1px 0;
+  font-weight: 550;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.remote-card .remote-text-action:hover { text-decoration-thickness: 2px; }
+.remote-card button:focus-visible { outline-color: currentColor; outline-offset: 1px; }
+.remote-device, .remote-harness {
+  display: grid;
+  gap: 2px;
+  padding: 7px 8px;
+  background: var(--remote-panel);
+  border: 1px solid #f8f1db40;
+  border-radius: 3px;
+}
+.remote-device > strong { font-weight: 650; }
+.remote-device > span { font: 8px/1.4 var(--mono); letter-spacing: .4px; text-transform: uppercase; }
+.remote-device .remote-text-action { margin-top: 2px; }
+.remote-harness > div { display: flex; align-items: center; gap: 4px; overflow-wrap: anywhere; }
+.remote-harness-icon { display: grid; place-items: center; flex: 0 0 17px; height: 17px; background: #2c2825; color: #fff; border-radius: 3px; }
+.remote-harness-icon > img, .remote-harness-icon > svg { width: 12px; height: 12px; object-fit: contain; }
+.remote-harness-icon.provider-codex img { filter: brightness(0) invert(1); }
+.remote-harness-icon.provider-claude { background: #fff0d9; }
+
+.remote-card-footer {
+  position: relative;
+  display: grid;
+  gap: 5px;
+  padding-top: 6px;
+  border-top: 1px solid #f8f1db80;
+}
+.remote-deadline { display: flex; align-items: center; gap: 5px; justify-content: space-between; }
+.remote-deadline time { font: 500 13px var(--mono); font-variant-numeric: tabular-nums; }
+.remote-deadline small { font: 8px/1.35 var(--mono); text-align: right; }
+.remote-card .remote-primary-action {
+  padding: 5px 6px;
+  border: 1px solid #fff1df80;
+  border-radius: 3px;
+  background: var(--remote-panel);
+  font-weight: 550;
+}
+.remote-card .remote-primary-action:hover:enabled { background: #943b28; }
+.remote-card .remote-primary-action:disabled { opacity: .55; }
+.remote-toolbar { display: flex; align-items: center; gap: 5px; padding: 4px 7px; font-size: 11px; font-weight: 550; color: var(--secondary); }
+.remote-toolbar:hover, .remote-toolbar[aria-pressed="true"] { color: var(--orange); }
+.remote-terminal-control { display: flex; align-items: center; justify-content: space-between; gap: 6px; padding: 4px 12px; color: var(--secondary); background: var(--surface-muted); font-size: 11px; }
+.remote-terminal-control button { padding: 4px 5px; border: 1px solid var(--line-strong); border-radius: 3px; background: var(--surface); font-weight: 550; }
+.remote-terminal-control button:hover { background: var(--hover); }
+
+.harness-slot:has(> .remote-card) { min-height: 280px; }
+@container harness-panel (max-height: 344px) {
+  .remote-card:is([data-phase="pairing"], [data-phase="disabled"]) .remote-card-title {
+    padding: 5px 0 7px;
+    font-size: clamp(16px, 10.5cqw, 20px);
+    line-height: 1;
+    letter-spacing: -.7px;
+    white-space: nowrap;
+  }
+  .remote-card:is([data-phase="pairing"], [data-phase="disabled"]) .remote-title-break { display: inline; }
+  .remote-card:is([data-phase="pairing"], [data-phase="disabled"]) .remote-orbit { height: 235%; }
+}
+@media (max-height: 720px) {
+  .sidebar:has(.remote-card) > .brand { height: 52px; min-height: 52px; }
+  .sidebar:has(.remote-card) > .sidebar-nav { padding-bottom: 6px; }
+  .sidebar:has(.remote-card) .nav-item { height: 32px; }
+  .sidebar:has(.remote-card) > .sidebar-section:not(.sessions-section) { min-height: 70px; max-height: 122px; padding-bottom: 6px; overflow: auto; }
+  .sidebar:has(.remote-card) .sidebar-label { height: 20px; margin-bottom: 4px; }
+  .sidebar:has(.remote-card) .session-item { height: 29px; }
+}

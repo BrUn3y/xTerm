@@ -1,5 +1,6 @@
 import { spawn } from 'node:child_process';
-import { createServer } from 'vite';
+import { build, createServer } from 'vite';
+await build({mode: 'remote', logLevel: 'warn'});
 const server = await createServer();
 await server.listen();
 server.printUrls();
