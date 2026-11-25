@@ -604,6 +604,12 @@ h2 {
 .remote-requirements {
   font-size: 12px;
 }
+.remote-install {
+  margin: 0 0 14px;
+}
+.remote-install code {
+  color: var(--ink);
+}
 .remote-requirements a {
   color: var(--ink);
   text-decoration: underline;
