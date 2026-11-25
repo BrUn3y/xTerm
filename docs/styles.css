@@ -543,6 +543,62 @@ h2 {
   color: var(--orange);
   margin-left: 15px;
 }
+.remote-section {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(225px, .85fr);
+  align-items: center;
+  gap: clamp(26px, 6vw, 88px);
+  border-bottom: 1px solid var(--line);
+}
+.remote-copy > p,
+.remote-steps {
+  color: var(--secondary);
+  line-height: 1.7;
+  font-size: 14px;
+}
+.remote-copy > p {
+  margin-top: 18px;
+}
+.remote-steps {
+  display: grid;
+  gap: 12px;
+  margin: 20px 0;
+  padding-inline-start: 22px;
+}
+.remote-steps strong {
+  color: var(--ink);
+  font-weight: 650;
+}
+.remote-copy .remote-requirements {
+  font-size: 12px;
+}
+.remote-requirements a {
+  color: var(--ink);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.remote-preview {
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  padding: 24px;
+  background: #eeeee7;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+}
+.remote-preview .screenshot-link {
+  width: min(100%, 240px);
+  background: #1b1e1a;
+}
+.remote-preview figcaption {
+  color: var(--secondary);
+  font-size: 12px;
+}
+@media (max-width: 760px) {
+  .remote-section {
+    grid-template-columns: 1fr;
+  }
+}
 .download-section {
   display: grid;
   grid-template-columns: 0.85fr 1.3fr;

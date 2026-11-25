@@ -2,13 +2,11 @@
 
 A desktop terminal built with Electron, React, TypeScript, xterm.js, and node-pty. An industrial interface in orange, paper, and carbon.
 
-[Website & screenshots](https://brun3y.github.io/xTerm/) · [Download for Mac (Apple Silicon)](https://github.com/BrUn3y/xTerm/releases/download/v0.5.1/xTerm-0.5.1-arm64.dmg) · [Release notes](https://github.com/BrUn3y/xTerm/releases)
+[Website & screenshots](https://brun3y.github.io/xTerm/) · [Download for Mac (Apple Silicon)](https://github.com/BrUn3y/xTerm/releases/download/v0.6.0/xTerm-0.6.0-arm64.dmg) · [Release notes](https://github.com/BrUn3y/xTerm/releases)
 
-Version `0.5.1` fixes text paste in coding agents and macOS bundle integrity.
-It includes an active-repository GitHub link, an SSH sidebar, negotiated
-Shift+Enter input and IBM's official Bob avatar, bundled for offline use.
-It pins a prerelease xterm.js core; see
-[release notes](docs/releases/v0.5.1.md) for validation and limitations.
+Version `0.6.0` introduces the Remote Mode beta for viewing and controlling
+selected xTerm sessions from a mobile browser. See the
+[release notes](docs/releases/v0.6.0.md) for installation and validation.
 Downloads include macOS Apple Silicon DMG/ZIP, Linux x64 AppImage and SHA-256
 checksums. Install updates manually; the in-app updater is still in development.
 
@@ -72,6 +70,16 @@ printf '\033]777;xterm-agent;{"name":"My Harness","model":"provider/model","stat
 
 Supported statuses are `running`, `working`, `ready`, `attention`, and `stopped`. The model field is optional. Send `stopped` when the harness exits, or return to the shell prompt. Reports are scoped to the terminal that emits them; the application does not read global agent conversations or credentials.
 
+## Remote Mode (beta)
+
+Install [cloudflared](https://developers.cloudflare.com/cloudflare-one/networks/connectors/cloudflare-tunnel/downloads/) and make it available on PATH. On macOS, Homebrew's default install locations are also detected. Both `npm run dev` and `npm run build` build the mobile client. Use `npm run build:remote` to rebuild it after editing mobile code during development.
+
+Choose **Enable Remote Mode** in the toolbar or command palette. Select the terminals to share, **View only** or **Allow commands**, and a duration of 1–5 hours. Start Remote Mode and scan the pairing QR on your phone within five minutes. One device can pair at a time. An expired QR can be refreshed without extending the remote session.
+
+In **Allow commands** mode, choose **Take control** on your phone. The desktop can take back control at any time. Commands run with your desktop account's permissions. The phone uses the desktop's terminal dimensions and scrolls horizontally when needed.
+
+Keep xTerm open and the computer online when you lock the screen. Remove a shared terminal or revoke the device from the sidebar, or choose **Disable Remote Mode** on either device. When access ends, existing shells and harnesses continue locally. Cloudflare Quick Tunnels are temporary and Cloudflare terminates TLS for the public connection.
+
 ## Motion and terminal space
 
 The terminal welcome banner has been removed to leave more room for commands. The animated artwork sits above the terminal surface at low opacity and never intercepts pointer input. Blueprint animates tracing lines and a scanning beam; Contours uses drifting rings and gentle waves. Working agents add an orange accent. Preferences include **Animate background**, and system **Reduce Motion** is respected. Clean has no background texture.
@@ -127,6 +135,7 @@ npm test            # OSC parsing and preservation of zsh/bash configuration
 npm run test:pty    # Native PTY, TTY, resize, Unicode, paths, Ctrl+C, and exit
 npm run build       # Strict TypeScript checking and production compilation
 npm run test:clipboard-desktop # Native clipboard, paste shortcuts, and PTY bytes
+npm run test:remote-ui # Mobile browser pairing, input, reconnection, and shutdown
 ```
 
 See [clipboard validation](docs/clipboard-validation.md) for the baseline

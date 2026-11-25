@@ -6,7 +6,7 @@
     <meta name="theme-color" content="#f3f2ed" />
     <meta
       name="description"
-      content="A terminal with a different point of view. Meet xTerm: real shell sessions, split panes, a built-in explorer, and a space for your coding agents. Download for Mac."
+      content="Real shell sessions, split panes, a built-in explorer, and Remote Mode for viewing or controlling your terminals from your phone. Download xTerm for Mac."
     />
     <meta property="og:type" content="website" />
     <meta property="og:title" content="xTerm — A space to create." />
@@ -44,6 +44,7 @@
         <span class="header-note mono">A SPACE TO CREATE</span>
         <nav aria-label="Main navigation">
           <a class="nav-detail" href="#features">Features</a>
+          <a class="nav-detail" href="#remote-mode">Remote Mode</a>
           <a class="nav-detail" href="#in-focus">In focus</a>
           <a href="https://github.com/BrUn3y/xTerm"
             >GitHub <span aria-hidden="true">↗</span></a
@@ -59,8 +60,8 @@
         <section class="hero" aria-labelledby="hero-title">
           <div class="section-meta mono">
             <span><i class="orange-square"></i> TERMINAL, REIMAGINED.</span
-            ><a href="https://github.com/BrUn3y/xTerm/releases/tag/v0.5.1"
-              ><i class="status-dot"></i> V0.5.1 IS HERE
+            ><a href="https://github.com/BrUn3y/xTerm/releases/tag/v0.6.0"
+              ><i class="status-dot"></i> V0.6.0 IS HERE
               <span aria-hidden="true">↗</span></a
             >
           </div>
@@ -82,7 +83,7 @@
               </p>
               <a
                 class="button button-orange"
-                href="https://github.com/BrUn3y/xTerm/releases/download/v0.5.1/xTerm-0.5.1-arm64.dmg"
+                href="https://github.com/BrUn3y/xTerm/releases/download/v0.6.0/xTerm-0.6.0-arm64.dmg"
                 ><svg
                   viewBox="0 0 24 24"
                   fill="none"
@@ -96,7 +97,7 @@
                 ></a
               >
               <span class="download-meta mono"
-                >V0.5.1 &nbsp;/&nbsp; APPLE SILICON &nbsp;/&nbsp; FREE & OPEN
+                >V0.6.0 &nbsp;/&nbsp; APPLE SILICON &nbsp;/&nbsp; FREE & OPEN
                 SOURCE</span
               >
             </div>
@@ -363,6 +364,39 @@
       </section>
 
       <div class="page-shell">
+        <section class="remote-section section" id="remote-mode" aria-labelledby="remote-mode-title">
+          <div class="remote-copy">
+            <h2 id="remote-mode-title">Remote Mode<span class="orange-text">.</span></h2>
+            <p>
+              Check on a running command or respond to your coding agent from your phone.
+              Remote Mode opens the terminals you choose in a mobile browser while xTerm
+              keeps running on your computer, including when the screen is locked.
+            </p>
+            <ol class="remote-steps">
+              <li><strong>Choose what to share.</strong> Open <strong>Enable Remote Mode</strong>
+                in xTerm. Select the terminals, choose <strong>View only</strong> or
+                <strong>Allow commands</strong>, and set a duration of 1–5 hours.</li>
+              <li><strong>Pair your phone.</strong> Start Remote Mode and scan the one-time QR
+                code within five minutes. One device can pair at a time. Commands run with
+                your desktop account’s permissions.</li>
+              <li><strong>End access when you’re done.</strong> Disable Remote Mode from either
+                device or let it expire. Your local terminals and coding agents keep running.</li>
+            </ol>
+            <p class="remote-requirements">
+              Remote Mode is in beta and uses Cloudflare Quick Tunnels. Keep xTerm open and
+              your computer online. <a href="https://developers.cloudflare.com/cloudflare-one/networks/connectors/cloudflare-tunnel/downloads/">Install cloudflared <span aria-hidden="true">↗</span></a>
+            </p>
+          </div>
+          <figure class="remote-preview">
+            <a class="screenshot-link" href="assets/xterm-remote-mode.png" data-zoom
+              data-caption="Remote Mode in xTerm, ready to choose the terminals, permissions, and duration for a pairing.">
+              <img src="assets/xterm-remote-mode.png"
+                alt="The orange Remote Mode sidebar card in xTerm shows a one-hour duration, View only permissions, and a selected terminal."
+                width="370" height="636" loading="lazy" />
+            </a>
+            <figcaption>Remote Mode setup in xTerm.</figcaption>
+          </figure>
+        </section>
         <section
           class="download-section section"
           id="download"
@@ -385,7 +419,7 @@
             <p>Download xTerm for your Mac and make yourself at home.</p>
             <a
               class="button button-ink"
-              href="https://github.com/BrUn3y/xTerm/releases/download/v0.5.1/xTerm-0.5.1-arm64.dmg"
+              href="https://github.com/BrUn3y/xTerm/releases/download/v0.6.0/xTerm-0.6.0-arm64.dmg"
               ><svg
                 viewBox="0 0 24 24"
                 fill="none"
@@ -398,13 +432,13 @@
                 >↓</span
               ></a
             ><span class="download-meta mono"
-              >V0.5.1 · MACOS · APPLE SILICON (ARM64) · 123 MB</span
+              >V0.6.0 · MACOS · APPLE SILICON (ARM64)</span
             >
             <div class="download-alternatives">
               <a
-                href="https://github.com/BrUn3y/xTerm/releases/download/v0.5.1/xTerm-0.5.1-arm64-mac.zip"
+                href="https://github.com/BrUn3y/xTerm/releases/download/v0.6.0/xTerm-0.6.0-arm64-mac.zip"
                 >Prefer a ZIP? <span aria-hidden="true">↗</span></a
-              ><a href="https://github.com/BrUn3y/xTerm/releases/tag/v0.5.1"
+              ><a href="https://github.com/BrUn3y/xTerm/releases/tag/v0.6.0"
                 >Release notes & checksums <span aria-hidden="true">↗</span></a
               >
             </div>

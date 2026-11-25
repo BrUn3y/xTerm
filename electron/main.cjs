@@ -1,77 +1,29 @@
-const { app, BrowserWindow, ipcMain, dialog, shell, Menu, nativeTheme, clipboard } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, shell, Menu, nativeTheme, clipboard, powerMonitor, powerSaveBlocker } = require('electron');
 const path = require('node:path');
 const os = require('node:os');
 const fs = require('node:fs');
 const fsp = require('node:fs/promises');
-const { execFile } = require('node:child_process');
-const { promisify } = require('node:util');
-const pty = require('node-pty');
-const { createShellIntegration, CwdTracker, quote } = require('./shell.cjs');
-const { AgentMonitor, parseProcessTable, findHarness } = require('./agents.cjs');
-const { SshMonitor, findForegroundSsh, isLocalShellForeground } = require('./ssh.cjs');
+const {createSessionManager, folder} = require('./sessions.cjs');
+const {RemoteMode} = require('./remote.cjs');
+const {toDataURL} = require('qrcode');
 const {listDirectory, fileDetails, resolveLink} = require('./files.cjs');
 const {gitInfo} = require('./git.cjs');
-const exec = promisify(execFile);
-const sessions = new Map();
 let window;
-let pollingAgents = false;
 let agentPoll;
-
-async function refreshAgents() {
-  if (pollingAgents || !sessions.size || process.platform === 'win32') return;
-  pollingAgents = true;
-  try {
-    const { stdout } = await exec('ps', ['-axo', 'pid=,ppid=,pgid=,tpgid=,stat=,pcpu=,args='], {timeout: 1600, maxBuffer: 4 * 1024 * 1024});
-    const processes = parseProcessTable(stdout);
-    if (process.platform === 'linux') {
-      await Promise.all(processes.filter(value => /^(?:\S*\/)?ssh(?:\s|$)/.test(value.command)).map(async value => {
-        try { value.argv = (await fsp.readFile(`/proc/${value.pid}/cmdline`, 'utf8')).split('\0').filter(Boolean); }
-        catch { value.argv = []; }
-      }));
-    }
-    for (const session of sessions.values()) {
-      session.agentMonitor.setProcess(findHarness(session.process.pid, processes));
-      const ssh = findForegroundSsh(session.process.pid, processes);
-      if (sessions.get(session.id) !== session) continue;
-      if (ssh) session.atPrompt = false;
-      void session.sshMonitor.setProcess(ssh, {cwd: session.cwd});
-    }
-  } catch {
-    // A failed sample must not retain a stale SSH transport or timer.
-    for (const session of sessions.values()) session.sshMonitor.reset();
-  }
-  finally { pollingAgents = false; }
-}
-
 const send = (channel, payload) => { if (window && !window.isDestroyed()) window.webContents.send(channel, payload); };
-const folder = async value => {
-  if (typeof value !== 'string' || !path.isAbsolute(value)) throw new Error('The path must be absolute.');
-  const resolved = await fsp.realpath(value);
-  if (!(await fsp.stat(resolved)).isDirectory()) throw new Error('The path is not a directory.');
-  return resolved;
-};
+const sessions = createSessionManager({
+  send, defaultCwd: () => app.isPackaged ? os.homedir() : process.cwd(), version: () => app.getVersion(),
+});
 
-function watchSession(session) {
-  session.watcher?.close();
-  clearTimeout(session.watchTimer);
-  try {
-    session.watcher = fs.watch(session.cwd, () => {
-      clearTimeout(session.watchTimer);
-      session.watchTimer = setTimeout(() => send('files:changed', { id: session.id, cwd: session.cwd }), 180);
-    });
-    session.watcher.on('error', () => {});
-  } catch { /* Remote or inaccessible directories may not support watching. */ }
-}
-function destroySession(id) {
-  const session = sessions.get(id);
-  if (!session) return;
-  sessions.delete(id);
-  session.agentMonitor?.reset();
-  session.sshMonitor?.reset();
-  session.watcher?.close();
-  clearTimeout(session.watchTimer);
-  try { session.process.kill(); } catch { /* Already exited. */ }
-  try { session.integration.cleanup(); } catch (error) { console.warn('Could not remove the temporary shell directory:', error.code); }
+const remote = new RemoteMode({
+  sessions, notify: state => send('remote:state', state),
+  assets: path.join(__dirname, '../dist/remote'),
+  power: {start: () => powerSaveBlocker.start('prevent-app-suspension'), stop: id => powerSaveBlocker.stop(id)},
+});
+
+function closeWorkspace() {
+  remote.stop();
+  sessions.destroyAll();
 }
 
 function createWindow() {
@@ -85,16 +37,16 @@ function createWindow() {
   });
   window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
   window.webContents.on('did-start-navigation', (_event, _url, isInPlace, isMainFrame) => {
-    if (isMainFrame && !isInPlace) for (const id of sessions.keys()) destroySession(id);
+    if (isMainFrame && !isInPlace) closeWorkspace();
   });
-  window.webContents.on('render-process-gone', () => { for (const id of sessions.keys()) destroySession(id); });
+  window.webContents.on('render-process-gone', closeWorkspace);
   window.webContents.on('will-navigate', (event, url) => {
     const allowed = process.env.XTERM_DEV_URL;
     if (allowed ? !url.startsWith(allowed + '/') : !url.startsWith('file://')) event.preventDefault();
   });
   if (process.env.XTERM_DEV_URL) window.loadURL(process.env.XTERM_DEV_URL);
   else window.loadFile(path.join(__dirname, '../dist/index.html'));
-  window.on('closed', () => { for (const id of sessions.keys()) destroySession(id); window = null; });
+  window.on('closed', () => { window = null; closeWorkspace(); });
 }
 
 ipcMain.handle('app:info', () => ({
@@ -109,86 +61,24 @@ ipcMain.on('app:appearance', (_event, theme) => {
   if (window && !window.isDestroyed()) window.setBackgroundColor(theme === 'dark' ? '#20221f' : '#f3f2ed');
 });
 ipcMain.handle('clipboard:read-text', () => clipboard.readText());
-ipcMain.handle('terminal:create', async (_event, options) => {
-  if (!options || typeof options.id !== 'string' || !/^[\w-]{1,80}$/.test(options.id) || sessions.has(options.id)) throw new Error('Invalid session.');
-  if (sessions.size >= 24) throw new Error('A maximum of 24 sessions can be open.');
-  const cwd = await folder(options.cwd || (app.isPackaged ? os.homedir() : process.cwd()));
-  const shellPath = options.shell || process.env.SHELL || (process.platform === 'win32' ? 'powershell.exe' : '/bin/zsh');
-  const allowedShells = new Set([process.env.SHELL, '/bin/zsh', '/bin/bash', 'powershell.exe', 'cmd.exe']);
-  if (!allowedShells.has(shellPath)) throw new Error('Shell is not available.');
-  const integration = createShellIntegration(shellPath);
-  try {
-    const processPty = pty.spawn(shellPath, integration.args, {
-      name: 'xterm-256color', cols: Math.min(500, Math.max(10, options.cols || 100)), rows: Math.min(300, Math.max(3, options.rows || 30)),
-      cwd, env: { ...process.env, TERM: 'xterm-256color', COLORTERM: 'truecolor', TERM_PROGRAM: 'xTerm', TERM_PROGRAM_VERSION: app.getVersion(), ...integration.env },
-    });
-    const session = { id: options.id, process: processPty, cwd, integration, shell: path.basename(shellPath), atPrompt: path.basename(shellPath) === 'zsh' ? false : null };
-    let activityGeneration = 0;
-    session.agentMonitor = new AgentMonitor(agent => send('terminal:agent', {id: session.id, agent}));
-    session.sshMonitor = new SshMonitor(ssh => send('terminal:ssh', {id: session.id, ssh}));
-    sessions.set(session.id, session);
-    async function localForeground() {
-      if (process.platform === 'win32') return false;
-      try {
-        const {stdout} = await exec('ps', ['-p', String(processPty.pid), '-o', 'pid=,ppid=,pgid=,tpgid=,stat=,pcpu=,args='], {timeout: 1200});
-        const root = parseProcessTable(stdout)[0];
-        return sessions.get(session.id) === session && isLocalShellForeground(root, session.shell);
-      } catch { return false; }
-    }
-    session.localForeground = localForeground;
-    const tracker = new CwdTracker(async newCwd => {
-      if (newCwd === session.cwd || !sessions.has(session.id)) return;
-      const generation = activityGeneration;
-      try {
-        if (!await localForeground()) return;
-        const valid = await folder(newCwd);
-        if (sessions.get(session.id) !== session || generation !== activityGeneration) return;
-        session.cwd = valid;
-        watchSession(session);
-        send('terminal:cwd', { id: session.id, cwd: valid });
-      } catch { /* The directory may have disappeared between prompts. */ }
-    }, atPrompt => {
-      if (!atPrompt) { activityGeneration++; session.atPrompt = false; return; }
-      const generation = activityGeneration;
-      // Remote shells can emit identical OSC markers. Only the local foreground
-      // shell may clear SSH/harness context or authorize local folder navigation.
-      void localForeground().then(local => {
-        if (!local || generation !== activityGeneration) return;
-        session.atPrompt = true; session.agentMonitor.reset(); session.sshMonitor.reset();
-      });
-    });
-    processPty.onData(data => { session.agentMonitor.observeOutput(data); tracker.push(data); send('terminal:data', { id: session.id, data }); });
-    processPty.onExit(({ exitCode, signal }) => { send('terminal:exit', { id: session.id, exitCode, signal }); destroySession(session.id); });
-    watchSession(session);
-    return { id: session.id, cwd, shell: session.shell, pid: processPty.pid };
-  } catch (error) { integration.cleanup(); throw error; }
-});
-ipcMain.on('terminal:write', (_event, { id, data }) => {
-  if (typeof data === 'string' && data.length <= 1_048_576) {
-    const session = sessions.get(id);
-    session?.agentMonitor.observeInput(data);
-    session?.process.write(data);
-  }
-});
-ipcMain.on('terminal:view', (_event, {id,lines}) => {
-  if (Array.isArray(lines) && lines.length <= 8 && lines.every(line=>typeof line === 'string' && line.length <= 1000)) {
-    sessions.get(id)?.agentMonitor.observeScreen(lines.join('\n'));
-  }
-});
-ipcMain.on('terminal:resize', (_event, { id, cols, rows }) => {
-  if (Number.isInteger(cols) && Number.isInteger(rows) && cols >= 2 && cols <= 1000 && rows >= 1 && rows <= 500) {
-    try { sessions.get(id)?.process.resize(cols, rows); } catch { /* Resized after exit. */ }
-  }
-});
-ipcMain.handle('terminal:close', (_event, id) => destroySession(id));
-ipcMain.handle('terminal:navigate', async (_event, { id, directory }) => {
-  const session = sessions.get(id);
-  if (!session) throw new Error('The session is no longer active.');
-  const target = await folder(directory);
-  if (session.atPrompt === false || process.platform !== 'win32' && !await session.localForeground()) throw new Error('A process is running. Return to the prompt or open another tab to change folders.');
-  if (sessions.get(id) !== session) throw new Error('The session is no longer active.');
-  const command = session.shell === 'powershell.exe' ? `Set-Location -LiteralPath ${quote(target)}` : session.shell === 'cmd.exe' ? `cd /d "${target}"` : `cd -- ${quote(target)}`;
-  session.process.write(`\x15${command}\r`);
+ipcMain.handle('terminal:create', (_event, options) => sessions.create(options));
+ipcMain.on('terminal:write', (_event, {id, data, response}) => sessions.write(id, data, null, response === true));
+ipcMain.on('terminal:clear', (_event, id) => sessions.clear(id));
+ipcMain.on('terminal:view', (_event, {id, lines}) => sessions.reportView(id, lines));
+ipcMain.on('terminal:resize', (_event, {id, cols, rows}) => sessions.resize(id, cols, rows));
+ipcMain.handle('terminal:close', (_event, id) => sessions.destroySession(id));
+ipcMain.handle('terminal:navigate', (_event, {id, directory}) => sessions.navigate(id, directory));
+ipcMain.handle('remote:state', () => remote.state());
+ipcMain.handle('remote:start', (_event, options) => remote.start(options));
+ipcMain.handle('remote:stop', () => remote.stop());
+ipcMain.handle('remote:regenerate', () => remote.regenerate());
+ipcMain.handle('remote:revoke', () => remote.revoke());
+ipcMain.handle('remote:share', (_event, id) => remote.share(id));
+ipcMain.handle('remote:remove', (_event, id) => remote.remove(id));
+ipcMain.handle('remote:take-control', (_event, id) => sessions.setController(id, null));
+ipcMain.handle('remote:qr', (_event, link) => {
+  if (remote.state().invitation?.link !== link || typeof link !== 'string') return null;
+  return toDataURL(link, {width: 252, margin: 4, errorCorrectionLevel: 'M'});
 });
 ipcMain.handle('files:list', async (_event, directory) => {
   const cwd = await folder(directory);
@@ -220,7 +110,8 @@ ipcMain.on('window:action', (_event, action) => {
 });
 
 app.whenReady().then(() => {
-  agentPoll = setInterval(() => void refreshAgents(), 900);
+  powerMonitor.on('resume', () => remote.tick());
+  agentPoll = setInterval(() => void sessions.refreshAgents(), 900);
   agentPoll.unref();
   Menu.setApplicationMenu(Menu.buildFromTemplate([
     ...(process.platform === 'darwin' ? [{ label: 'xTerm', submenu: [{ role: 'about', label: 'About xTerm' }, { type: 'separator' }, { label: 'Preferences…', accelerator: 'CmdOrCtrl+,', click: () => send('app:command', 'settings') }, { type: 'separator' }, { role: 'hide', label: 'Hide xTerm' }, { role: 'hideOthers', label: 'Hide Others' }, { role: 'unhide', label: 'Show All' }, { type: 'separator' }, { role: 'quit', label: 'Quit xTerm' }] }] : []),
@@ -238,4 +129,4 @@ app.whenReady().then(() => {
   app.on('activate', () => { if (!BrowserWindow.getAllWindows().length) createWindow(); });
 });
 app.on('window-all-closed', () => { if (process.platform !== 'darwin') app.quit(); });
-app.on('before-quit', () => { clearInterval(agentPoll); for (const id of sessions.keys()) destroySession(id); });
+app.on('before-quit', () => { clearInterval(agentPoll); closeWorkspace(); });

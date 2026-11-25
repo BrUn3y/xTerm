@@ -1,6 +1,6 @@
 {
   "name": "xterm-desktop",
-  "version": "0.5.1",
+  "version": "0.6.0",
   "private": true,
   "description": "A terminal with a different point of view.",
   "main": "electron/main.cjs",
@@ -17,7 +17,7 @@
   "scripts": {
     "dev": "node scripts/dev.mjs",
     "dev:web": "vite --host 127.0.0.1",
-    "build": "tsc --noEmit && vite build",
+    "build": "tsc --noEmit && vite build && vite build --mode remote",
     "start": "electron .",
     "rebuild": "electron-rebuild -f -w node-pty",
     "postinstall": "electron-rebuild -f -w node-pty",
@@ -32,7 +32,9 @@
     "test:keyboard-stack": "node scripts/test-keyboard-stack.mjs",
     "test:clipboard-desktop": "node scripts/test-clipboard-desktop.mjs",
     "test:github-ui": "node scripts/test-github-ui.mjs",
-    "test:github-desktop": "node scripts/test-github-desktop.mjs"
+    "test:github-desktop": "node scripts/test-github-desktop.mjs",
+    "build:remote": "vite build --mode remote",
+    "test:remote-ui": "node scripts/test-remote-ui.mjs"
   },
   "dependencies": {
     "@fontsource-variable/dm-sans": "^5.2.8",
@@ -40,12 +42,16 @@
     "@fontsource/ibm-plex-mono": "^5.2.7",
     "@xterm/addon-fit": "^0.11.0",
     "@xterm/addon-search": "^0.16.0",
+    "@xterm/addon-serialize": "0.15.0-beta.333",
     "@xterm/addon-web-links": "^0.12.0",
+    "@xterm/headless": "6.1.0-beta.337",
     "@xterm/xterm": "6.1.0-beta.339",
     "lucide-react": "^0.468.0",
     "node-pty": "^1.1.0",
+    "qrcode": "1.5.4",
     "react": "^19.2.0",
-    "react-dom": "^19.2.0"
+    "react-dom": "^19.2.0",
+    "ws": "8.23.0"
   },
   "devDependencies": {
     "@electron/rebuild": "^4.0.1",

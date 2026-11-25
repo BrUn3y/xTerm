@@ -23,7 +23,7 @@ export interface SshInfo {
   status: 'connecting' | 'unknown'; statusDetail: string;
   startedAt: number; durationKind: 'observed-process';
 }
-export interface Pane { id: string; cwd: string; shell: string; status: PaneStatus; pid?: number; agent?: AgentInfo | null; ssh?: SshInfo | null }
+export interface Pane { id: string; cwd: string; shell: string; status: PaneStatus; pid?: number; remoteControl?: boolean; agent?: AgentInfo | null; ssh?: SshInfo | null }
 export interface Tab { id: string; panes: Pane[]; activePane: string }
 export interface Settings {
   font: string; fontSize: number; lineHeight: number; cursor: 'block' | 'bar' | 'underline';
@@ -34,6 +34,16 @@ export interface TerminalHandle {
   focus(): void; clear(): void; paste(text: string): void;
   find(value: string, previous?: boolean): boolean; clearSearch(): void;
 }
+export type RemotePermission = 'view' | 'commands';
+export interface RemoteOptions { ids: string[]; provider: 'cloudflare'; permission: RemotePermission; hours: number }
+export type RemoteState =
+  | {status: 'disabled'; message: string}
+  | {
+    status: 'starting' | 'active'; provider: 'cloudflare'; permission: RemotePermission;
+    ids: string[]; expiresAt: number; remaining: number;
+    invitation: {link: string; expiresAt: number} | null;
+    device: {label: string; connected: boolean} | null;
+  };
 export interface Desktop {
   info(): Promise<AppInfo>;
   setAppearance(theme: Settings['theme']): void;
@@ -41,7 +51,8 @@ export interface Desktop {
   droppedFilePaths(files: File[]): string[];
   reportTerminalView(id: string, lines: string[]): void;
   createTerminal(options: {id: string; cwd: string; shell: string; cols: number; rows: number}): Promise<{id: string; cwd: string; shell: string; pid: number}>;
-  write(id: string, data: string): void; resize(id: string, cols: number, rows: number): void;
+  write(id: string, data: string): void; respond(id: string, data: string): void; resize(id: string, cols: number, rows: number): void;
+  clearTerminal(id: string): void;
   closeTerminal(id: string): Promise<void>;
   navigate(id: string, directory: string): Promise<void>;
   onData(callback: (event: {id: string; data: string}) => void): () => void;
@@ -49,6 +60,13 @@ export interface Desktop {
   onExit(callback: (event: {id: string; exitCode: number}) => void): () => void;
   onAgent(callback: (event: {id: string; agent: AgentInfo | null}) => void): () => void;
   onSsh(callback: (event: {id: string; ssh: SshInfo | null}) => void): () => void;
+  onControl(callback: (event: {id: string; remote: boolean}) => void): () => void;
+  remote: {
+    state(): Promise<RemoteState>; start(options: RemoteOptions): Promise<RemoteState>; stop(): Promise<RemoteState>;
+    regenerate(): Promise<RemoteState>; revoke(): Promise<RemoteState>; share(id: string): Promise<RemoteState>;
+    remove(id: string): Promise<RemoteState>; takeControl(id: string): Promise<void>; qr(link: string): Promise<string | null>;
+    onState(callback: (state: RemoteState) => void): () => void;
+  };
   onFilesChanged(callback: (event: {id: string; cwd: string}) => void): () => void;
   onCommand(callback: (command: string) => void): () => void;
   listFiles(directory: string): Promise<FileListing>;
