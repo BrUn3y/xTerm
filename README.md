@@ -2,11 +2,10 @@
 
 A desktop terminal built with Electron, React, TypeScript, xterm.js, and node-pty. An industrial interface in orange, paper, and carbon.
 
-[Website & screenshots](https://brun3y.github.io/xTerm/) · [Download for Mac (Apple Silicon)](https://github.com/BrUn3y/xTerm/releases/download/v0.6.0/xTerm-0.6.0-arm64.dmg) · [Release notes](https://github.com/BrUn3y/xTerm/releases)
+[Website & screenshots](https://brun3y.github.io/xTerm/) · [Download for Mac (Apple Silicon)](https://github.com/BrUn3y/xTerm/releases/download/v0.6.1/xTerm-0.6.1-arm64.dmg) · [Release notes](https://github.com/BrUn3y/xTerm/releases)
 
-Version `0.6.0` introduces the Remote Mode beta for viewing and controlling
-selected xTerm sessions from a mobile browser. See the
-[release notes](docs/releases/v0.6.0.md) for installation and validation.
+Version `0.6.1` restores automatic detection of foreground coding harnesses.
+See the [release notes](docs/releases/v0.6.1.md) for installation and validation.
 Downloads include macOS Apple Silicon DMG/ZIP, Linux x64 AppImage and SHA-256
 checksums. Install updates manually; the in-app updater is still in development.
 
