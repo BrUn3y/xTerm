@@ -88,12 +88,13 @@ The terminal welcome banner has been removed to leave more room for commands. Th
 - Real pseudoterminal with zsh or bash on macOS: history, aliases, completion, ANSI colors, Unicode, interactive applications, and Ctrl+C.
 - Independent tabs and two panes per tab. Click Split again to switch vertical/horizontal layout. Closing the last tab creates a new session.
 - Explorer shown by default: follows `cd`, watches filesystem changes, filters files, shows hidden files, copies paths, and reveals files in Finder. Double-click or press Enter on a folder to navigate.
+- Click a text file in the Explorer to open it in `vi` with line numbers and mouse or trackpad scrolling. xTerm reuses a ready zsh or bash prompt on macOS and Linux. It opens a new terminal tab when the active pane is busy or the shell has no prompt integration. The Explorer shows **Save** when the file has unsaved edits, and `:w` works inside the editor. This requires a Vim build with timer support on PATH.
 - Saved workspace folders and a native folder picker.
 - Terminal buffer search, command palette, quick commands, and HTTP/HTTPS links opened in the default browser.
 - Git branch and tracked modified-file count when the current directory belongs to a repository.
 - Preferences and workspace folders stored locally. Sessions and processes are not restored after closing the application.
 
-Quick commands are **inserted** into the prompt; press Enter to run them. Explorer navigation uses `cd` in the active session. In zsh, navigation is blocked while a foreground process is running; return to the prompt or open a new tab. Foreground activity detection is not available for bash.
+Quick commands are **inserted** into the prompt. Press Enter to run them. Explorer navigation uses `cd` in the active session. On macOS and Linux, return to the prompt or open another tab if a foreground process is running.
 
 Directory integration uses temporary startup files that load your existing configuration. It does not modify `.zshrc`, `.zprofile`, `.bashrc`, or other user configuration files. Temporary files are removed when a session ends. Closing a pane or window terminates its shell processes.
 

@@ -31,6 +31,7 @@
     "test:keyboard-desktop": "node scripts/test-keyboard-desktop.mjs",
     "test:keyboard-stack": "node scripts/test-keyboard-stack.mjs",
     "test:clipboard-desktop": "node scripts/test-clipboard-desktop.mjs",
+    "test:explorer-desktop": "node scripts/test-explorer-desktop.mjs",
     "test:github-ui": "node scripts/test-github-ui.mjs",
     "test:github-desktop": "node scripts/test-github-desktop.mjs",
     "build:remote": "vite build --mode remote",

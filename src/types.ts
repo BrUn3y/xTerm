@@ -23,7 +23,8 @@ export interface SshInfo {
   status: 'connecting' | 'unknown'; statusDetail: string;
   startedAt: number; durationKind: 'observed-process';
 }
-export interface Pane { id: string; cwd: string; shell: string; status: PaneStatus; pid?: number; remoteControl?: boolean; agent?: AgentInfo | null; ssh?: SshInfo | null }
+export interface EditorState { path: string; dirty: boolean }
+export interface Pane { id: string; cwd: string; shell: string; status: PaneStatus; pid?: number; remoteControl?: boolean; agent?: AgentInfo | null; ssh?: SshInfo | null; editorPath?: string; editor?: EditorState | null }
 export interface Tab { id: string; panes: Pane[]; activePane: string }
 export interface Settings {
   font: string; fontSize: number; lineHeight: number; cursor: 'block' | 'bar' | 'underline';
@@ -50,17 +51,20 @@ export interface Desktop {
   readClipboardText(): Promise<string>;
   droppedFilePaths(files: File[]): string[];
   reportTerminalView(id: string, lines: string[]): void;
-  createTerminal(options: {id: string; cwd: string; shell: string; cols: number; rows: number}): Promise<{id: string; cwd: string; shell: string; pid: number}>;
+  createTerminal(options: {id: string; cwd: string; shell: string; cols: number; rows: number; editorPath?: string}): Promise<{id: string; cwd: string; shell: string; pid: number}>;
   write(id: string, data: string): void; respond(id: string, data: string): void; resize(id: string, cols: number, rows: number): void;
   clearTerminal(id: string): void;
   closeTerminal(id: string): Promise<void>;
   navigate(id: string, directory: string): Promise<void>;
+  openEditor(id: string | undefined, file: string): Promise<'not-text' | 'new-tab' | 'opened'>;
+  saveEditor(id: string, file: string): Promise<void>;
   onData(callback: (event: {id: string; data: string}) => void): () => void;
   onCwd(callback: (event: {id: string; cwd: string}) => void): () => void;
   onExit(callback: (event: {id: string; exitCode: number}) => void): () => void;
   onAgent(callback: (event: {id: string; agent: AgentInfo | null}) => void): () => void;
   onSsh(callback: (event: {id: string; ssh: SshInfo | null}) => void): () => void;
   onControl(callback: (event: {id: string; remote: boolean}) => void): () => void;
+  onEditor(callback: (event: {id: string; editor: EditorState | null}) => void): () => void;
   remote: {
     state(): Promise<RemoteState>; start(options: RemoteOptions): Promise<RemoteState>; stop(): Promise<RemoteState>;
     regenerate(): Promise<RemoteState>; revoke(): Promise<RemoteState>; share(id: string): Promise<RemoteState>;
