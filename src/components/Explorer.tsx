@@ -1,9 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
-import { ArrowDownAZ, ArrowUp, ArrowUpRight, Braces, Check, ChevronRight, Code2, Copy, Ellipsis, Eye, EyeOff, File, FileCode2, FileJson, FileText, Folder, FolderOpen, GitBranch, Image, LoaderCircle, RefreshCw, Search, X } from 'lucide-react';
-import type { FileEntry, FileListing, GitInfo, Settings } from '../types';
+import { ArrowDownAZ, ArrowUp, ArrowUpRight, Braces, Check, ChevronRight, Code2, Copy, Ellipsis, Eye, EyeOff, File, FileCode2, FileJson, FileText, Folder, FolderOpen, GitBranch, Image, LoaderCircle, RefreshCw, Save, Search, X } from 'lucide-react';
+import type { EditorState, FileEntry, FileListing, GitInfo, Settings } from '../types';
 import { basename, formatSize, shortPath } from '../settings';
 import {FILE_PATH_MIME} from '../lib/dropped-paths.mjs';
-interface Props { cwd: string; home: string; settings: Settings; onNavigate(path: string): void; onHidden(): void; onError(message: string): void; refreshKey: number }
+interface Props {
+  cwd: string; home: string; settings: Settings; editor?: EditorState | null; refreshKey: number;
+  onOpenFile(path: string): Promise<boolean>; onSaveFile(path: string): Promise<void>;
+  onNavigate(path: string): void; onHidden(): void; onError(message: string): void;
+}
 function FileIcon({file}: {file: FileEntry}) {
   if (file.directory) return <Folder size={16} className="file-folder"/>;
   if (/\.(tsx?|jsx?|mjs|cjs|py|sh|css|html|rs|go)$/.test(file.name)) return <FileCode2 size={15} className={/\.[jt]sx?$/.test(file.name) ? 'file-code' : ''}/>;
@@ -12,7 +16,7 @@ function FileIcon({file}: {file: FileEntry}) {
   if (/\.(md|txt|log)$/.test(file.name)) return <FileText size={15}/>;
   return <File size={15}/>;
 }
-export default function Explorer({cwd, home, settings, onNavigate, onHidden, onError, refreshKey}: Props) {
+export default function Explorer({cwd, home, settings, editor, onOpenFile, onSaveFile, onNavigate, onHidden, onError, refreshKey}: Props) {
   const [listing, setListing] = useState<FileListing | null>(null);
   const [git, setGit] = useState<GitInfo | null>(null);
   const [loading, setLoading] = useState(false);
@@ -20,30 +24,37 @@ export default function Explorer({cwd, home, settings, onNavigate, onHidden, onE
   const [query, setQuery] = useState('');
   const [searchOpen, setSearchOpen] = useState(false);
   const [selected, setSelected] = useState<FileEntry | null>(null);
+  const [metadata, setMetadata] = useState<Pick<FileEntry, 'path' | 'size' | 'modified'> | null>(null);
   const [menu, setMenu] = useState(false);
   const [refresh, setRefresh] = useState(0);
   const [copied, setCopied] = useState(false);
   const searchRef = useRef<HTMLInputElement>(null);
+  const lastOpen = useRef<{path: string; result: Promise<boolean>} | null>(null);
+  const editorEntry = editor && (listing?.entries.find(file => file.path === editor.path) || {
+    path: editor.path, name: basename(editor.path), directory: false, symlink: false,
+    hidden: false, size: null, modified: null,
+  });
+  const detailEntry = editor?.dirty ? editorEntry : selected || editorEntry;
+  const detail = detailEntry && metadata?.path === detailEntry.path ? {...detailEntry, ...metadata} : detailEntry;
   useEffect(() => {
     let alive = true;
     if (!window.desktop || !cwd) return;
     setLoading(true); setError('');
-    setSelected(null);
     void window.desktop.listFiles(cwd).then(result => { if (alive) setListing(result); }).catch(err => { if (alive) { setError(String(err).replace(/^Error:.*?: /, '')); setListing(null); } }).finally(() => { if (alive) setLoading(false); });
     setGit(null);
     void window.desktop.gitInfo(cwd).then(result => { if (alive) setGit(result); }).catch(() => { if (alive) setGit(null); });
     return () => { alive = false; };
   }, [cwd, refresh, refreshKey]);
-  useEffect(() => { setQuery(''); }, [cwd]);
+  useEffect(() => { setQuery(''); setSelected(null); }, [cwd]);
   useEffect(() => {
     let alive = true;
-    if (!selected || selected.directory || selected.symlink || !window.desktop) return;
-    const selectedPath = selected.path;
-    void window.desktop.fileDetails(selectedPath).then(details => {
-      if (alive) setSelected(current => current?.path === selectedPath ? {...current,...details} : current);
+    if (!detailEntry || detailEntry.directory || detailEntry.symlink || !window.desktop) return;
+    const file = detailEntry.path;
+    void window.desktop.fileDetails(file).then(details => {
+      if (alive) setMetadata({path: file, ...details});
     }).catch(() => { /* Keep unavailable metadata blank. */ });
     return () => {alive = false;};
-  }, [selected?.path]);
+  }, [detailEntry?.path, refresh, refreshKey]);
   useEffect(() => { if (searchOpen) searchRef.current?.focus(); }, [searchOpen]);
   const entries = listing?.entries.filter(file => (settings.showHidden || !file.hidden) && file.name.toLowerCase().includes(query.toLowerCase())) || [];
   const folders = entries.filter(file => file.directory).length;
@@ -57,6 +68,18 @@ export default function Explorer({cwd, home, settings, onNavigate, onHidden, onE
       await window.desktop?.revealFile(file.path);
     } catch (error) { onError(String(error)); }
   };
+  const openText = (file: FileEntry) => onOpenFile(file.path).catch(error => {
+    onError(String(error).replace(/^Error:.*?: Error: /, ''));
+    return true;
+  });
+  const activateEntry = (file: FileEntry) => {
+    if (file.directory) { void openEntry(file); return; }
+    const result = lastOpen.current?.path === file.path ? lastOpen.current.result : openText(file);
+    void result.then(opened => { if (!opened) void openEntry(file); });
+  };
+  const save = (file: string) => {
+    void onSaveFile(file).catch(error => onError(String(error).replace(/^Error:.*?: Error: /, '')));
+  };
   const copy = async (value: string) => { try { await navigator.clipboard.writeText(value); setCopied(true); setTimeout(() => setCopied(false), 1600); } catch { onError('Could not copy the path.'); } };
   return <aside className="explorer">
     <header className="explorer-header"><div><span className="section-code">CONTEXT / 02</span><h3>Explorer<span>.</span></h3></div><span className="square-code"><FolderOpen size={18}/></span></header>
@@ -68,10 +91,31 @@ export default function Explorer({cwd, home, settings, onNavigate, onHidden, onE
     <div className="file-list" aria-label="Files in the current directory">
       {error && <div className="empty-state"><Folder size={24}/><strong>Could not open this folder</strong><p>{error}</p><button className="text-button" onClick={() => setRefresh(value => value + 1)}>Retry</button></div>}
       {!error && !entries.length && <div className="empty-state">{loading ? <LoaderCircle size={22} className="spinning"/> : <FolderOpen size={25}/>}<p>{loading ? 'Reading folder…' : query ? 'No matching files.' : 'This folder is empty.'}</p></div>}
-      {entries.map(file => <button key={file.path} draggable onDragStart={event => {event.dataTransfer.setData(FILE_PATH_MIME,JSON.stringify([file.path]));event.dataTransfer.setData('text/plain',file.path);event.dataTransfer.effectAllowed='copy';}} className={`file-row ${selected?.path === file.path ? 'selected' : ''} ${file.hidden ? 'hidden-file' : ''}`} title={`${file.name}${file.directory ? ' · Double-click to open' : file.symlink ? ' · Double-click to open link' : ' · Double-click to show in Finder'}`} onClick={() => setSelected(file)} onDoubleClick={() => void openEntry(file)} onKeyDown={event => { if (event.key === 'Enter') { event.preventDefault(); void openEntry(file); } }}><FileIcon file={file}/><span>{file.name}</span>{file.directory ? <ChevronRight size={12} className="file-chevron"/> : <small>{file.name.includes('.') ? file.name.split('.').pop() : '—'}</small>}</button>)}
+      {entries.map(file => <button key={file.path} draggable
+        onDragStart={event => {event.dataTransfer.setData(FILE_PATH_MIME,JSON.stringify([file.path]));event.dataTransfer.setData('text/plain',file.path);event.dataTransfer.effectAllowed='copy';}}
+        className={`file-row ${detail?.path === file.path ? 'selected' : ''} ${file.hidden ? 'hidden-file' : ''}`}
+        title={`${file.name}${file.directory ? ' · Double-click to open' : ' · Click to open text in vi'}`}
+        onClick={event => {
+          setSelected(file);
+          if (!file.directory && event.detail < 2) lastOpen.current = {path: file.path, result: openText(file)};
+        }}
+        onDoubleClick={() => activateEntry(file)}
+        onKeyDown={event => {
+          if (event.key !== 'Enter') return;
+          event.preventDefault();
+          setSelected(file);
+          lastOpen.current = null;
+          activateEntry(file);
+        }}><FileIcon file={file}/><span>{file.name}</span>{file.directory ? <ChevronRight size={12} className="file-chevron"/> : <small>{file.name.includes('.') ? file.name.split('.').pop() : '—'}</small>}</button>)}
     </div>
     <div className="explorer-count"><span><i className="live-dot"/> In sync with your shell</span><span>{entries.length} items</span></div>
-    {selected ? <div className="file-detail"><div className="file-detail-label"><span>SELECTION</span><button className="icon-button" title="Deselect file" onClick={() => setSelected(null)}><X size={12}/></button></div><div className="detail-filename"><FileIcon file={selected}/><strong>{selected.name}</strong></div><div className="file-detail-meta"><span>{selected.directory ? 'Folder' : selected.symlink ? 'Symbolic link' : selected.size === null ? '—' : formatSize(selected.size)}</span><span>{selected.modified ? new Date(selected.modified).toLocaleDateString('en-US', {day:'2-digit',month:'short'}) : '—'}</span></div><button className="detail-copy" onClick={() => void copy(selected.path)}>{copied ? <Check size={12}/> : <Copy size={12}/>} {copied ? 'Path copied' : 'Copy path'}<ArrowUpRight size={12}/></button></div> : <div className="directory-summary"><div><Folder size={15}/><span>{folders} folders</span></div><div><FileText size={15}/><span>{entries.length - folders} files</span></div></div>}
+    {detail ? <div className="file-detail">
+      <div className="file-detail-label"><span>SELECTION</span>{selected && editor?.path !== detail.path && <button className="icon-button" title="Deselect file" onClick={() => setSelected(null)}><X size={12}/></button>}</div>
+      <div className="detail-filename"><FileIcon file={detail}/><strong>{detail.name}</strong></div>
+      <div className="file-detail-meta"><span>{detail.directory ? 'Folder' : detail.symlink ? 'Symbolic link' : detail.size === null ? '—' : formatSize(detail.size)}</span><span>{detail.modified ? new Date(detail.modified).toLocaleDateString('en-US', {day:'2-digit',month:'short'}) : '—'}</span></div>
+      <button className="detail-copy" onClick={() => void copy(detail.path)}>{copied ? <Check size={12}/> : <Copy size={12}/>} {copied ? 'Path copied' : 'Copy path'}<ArrowUpRight size={12}/></button>
+      {editor?.dirty && <button className="detail-save" onClick={() => save(editor.path)}><Save size={12}/> Save</button>}
+    </div> : <div className="directory-summary"><div><Folder size={15}/><span>{folders} folders</span></div><div><FileText size={15}/><span>{entries.length - folders} files</span></div></div>}
     <div className="git-card"><div className="git-card-title"><GitBranch size={14}/><span>VERSION CONTROL</span>{git && <i className="live-dot"/>}</div><div className="git-card-content"><strong>{git?.branch || 'No repository'}</strong><span>{git ? git.changed ? `${git.changed} changes` : 'Up to date' : 'Something new starts here.'}</span></div></div>
     <div className="explorer-bottom"><Braces size={15}/><span>CONTEXT CHANGES EVERYTHING.</span><Code2 size={14}/></div>
   </aside>;

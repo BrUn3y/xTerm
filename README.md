@@ -88,6 +88,7 @@ The terminal welcome banner has been removed to leave more room for commands. Th
 - Real pseudoterminal with zsh or bash on macOS: history, aliases, completion, ANSI colors, Unicode, interactive applications, and Ctrl+C.
 - Independent tabs and two panes per tab. Click Split again to switch vertical/horizontal layout. Closing the last tab creates a new session.
 - Explorer shown by default: follows `cd`, watches filesystem changes, filters files, shows hidden files, copies paths, and reveals files in Finder. Double-click or press Enter on a folder to navigate.
+- Click a text file in the Explorer to open it in `vi` with line numbers and mouse or trackpad scrolling. xTerm reuses a ready zsh or bash prompt on macOS and Linux and opens a new terminal tab when the active pane is busy. The Explorer shows **Save** when the file has unsaved edits, and `:w` works inside the editor. This requires a Vim build with timer support on PATH.
 - Saved workspace folders and a native folder picker.
 - Terminal buffer search, command palette, quick commands, and HTTP/HTTPS links opened in the default browser.
 - Git branch and tracked modified-file count when the current directory belongs to a repository.

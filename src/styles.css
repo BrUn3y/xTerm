@@ -188,3 +188,17 @@
 .terminal-drop-hint strong { font-size: 15px; font-weight: 550; }.terminal-drop-hint > span { color: var(--muted); font-size: 10px; }
 .terminal-drop-error { position: absolute; z-index: 7; left: 18px; right: 18px; bottom: 15px; padding: 10px 12px; display: flex; gap: 10px; align-items: center; justify-content: space-between; font-size: 11px; color: var(--ink); border: 1px solid var(--line-strong); border-radius: 3px; background: var(--surface); }
 .file-row[draggable=true] { cursor: grab; }.file-row[draggable=true]:active { cursor: grabbing; }
+.detail-save {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  width: 100%;
+  margin-top: 6px;
+  padding: 6px 8px;
+  border: 1px solid var(--line-strong);
+  border-radius: 3px;
+  background: var(--selected);
+  color: var(--secondary);
+  font: 9px var(--mono);
+}
+.detail-save:hover { background: var(--hover); border-color: var(--orange); }

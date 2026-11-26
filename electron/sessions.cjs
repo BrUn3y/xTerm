@@ -9,6 +9,8 @@ const { AgentMonitor, parseProcessTable, findHarness } = require('./agents.cjs')
 const { SshMonitor, findForegroundSsh, isLocalShellForeground } = require('./ssh.cjs');
 const {EventEmitter} = require('node:events');
 const {TerminalState} = require('./terminal-state.cjs');
+const {createEditor} = require('./explorer-editor.cjs');
+const {isTextFile} = require('./files.cjs');
 const exec = promisify(execFile);
 
 const folder = async value => {
@@ -74,7 +76,8 @@ function createSessionManager({send, defaultCwd, version}) {
     session.watcher?.close();
     clearTimeout(session.watchTimer);
     try { session.process.kill(); } catch { /* Already exited. */ }
-    try { session.integration.cleanup(); } catch (error) { console.warn('Could not remove the temporary shell directory:', error.code); }
+    void session.editor?.close();
+    try { session.integration?.cleanup(); } catch (error) { console.warn('Could not remove the temporary shell directory:', error.code); }
   }
 
   async function create(options) {
@@ -88,22 +91,30 @@ function createSessionManager({send, defaultCwd, version}) {
       const shellPath = options.shell || process.env.SHELL || (process.platform === 'win32' ? 'powershell.exe' : '/bin/zsh');
       const allowedShells = new Set([process.env.SHELL, '/bin/zsh', '/bin/bash', 'powershell.exe', 'cmd.exe']);
       if (!allowedShells.has(shellPath)) throw new Error('Shell is not available.');
-      const integration = createShellIntegration(shellPath);
-      let processPty;
+      let processPty, editor, integration;
       try {
+        if (options.editorPath !== undefined) {
+          if (!await isTextFile(options.editorPath)) throw new Error('The selected file is no longer a text file.');
+          editor = await createEditor(options.editorPath);
+        } else {
+          integration = createShellIntegration(shellPath);
+        }
+        if (pending.get(options.id) !== reservation) throw new Error('The session was closed before it started.');
         const cols = Math.min(500, Math.max(10, Number.isInteger(options.cols) ? options.cols : 100));
         const rows = Math.min(300, Math.max(3, Number.isInteger(options.rows) ? options.rows : 30));
-        processPty = pty.spawn(shellPath, integration.args, {
+        processPty = pty.spawn(editor?.executable || shellPath, editor?.args || integration.args, {
           name: 'xterm-256color', cols, rows,
-          cwd, env: { ...process.env, TERM: 'xterm-256color', COLORTERM: 'truecolor', TERM_PROGRAM: 'xTerm', TERM_PROGRAM_VERSION: version(), ...integration.env },
+          cwd, env: { ...process.env, TERM: 'xterm-256color', COLORTERM: 'truecolor', TERM_PROGRAM: 'xTerm', TERM_PROGRAM_VERSION: version(), ...integration?.env },
         });
-        const session = { id: options.id, process: processPty, cwd, integration, shell: path.basename(shellPath), atPrompt: path.basename(shellPath) === 'zsh' ? false : null };
-        let activityGeneration = 0;
+        const session = { id: options.id, process: processPty, cwd, integration, editor, shell: path.basename(shellPath),
+          atPrompt: editor || path.basename(shellPath) === 'zsh' ? false : null,
+          activityGeneration: 0, inputGeneration: 0, promptInput: 0 };
         session.screen = new TerminalState(cols, rows, event => events.emit('screen', session.id, event),
           paused => paused ? processPty.pause() : processPty.resume());
         session.agentMonitor = new AgentMonitor(agent => updateMetadata(session, 'agent', agent));
         session.sshMonitor = new SshMonitor(ssh => updateMetadata(session, 'ssh', ssh));
         sessions.set(session.id, session);
+        if (editor) observeEditor(session, editor);
         async function localForeground() {
           if (process.platform === 'win32') return false;
           try {
@@ -115,29 +126,36 @@ function createSessionManager({send, defaultCwd, version}) {
         session.localForeground = localForeground;
         const tracker = new CwdTracker(async newCwd => {
           if (newCwd === session.cwd || !sessions.has(session.id)) return;
-          const generation = activityGeneration;
+          const generation = session.activityGeneration;
           try {
             if (!await localForeground()) return;
             const valid = await folder(newCwd);
-            if (sessions.get(session.id) !== session || generation !== activityGeneration) return;
+            if (sessions.get(session.id) !== session || generation !== session.activityGeneration) return;
             session.cwd = valid;
             watchSession(session);
             updateMetadata(session, 'cwd', valid);
           } catch { /* The directory may have disappeared between prompts. */ }
         }, atPrompt => {
-          if (!atPrompt) { activityGeneration++; session.atPrompt = false; return; }
-          const generation = activityGeneration;
+          if (!atPrompt) { session.activityGeneration++; session.atPrompt = false; return; }
+          const generation = session.activityGeneration;
+          const inputGeneration = session.inputGeneration;
           // Remote shells can emit identical OSC markers. Only the local foreground
           // shell may clear SSH/harness context or authorize local folder navigation.
           void localForeground().then(local => {
-            if (!local || generation !== activityGeneration) return;
+            if (!local || generation !== session.activityGeneration) return;
+            session.promptInput = inputGeneration;
+            if (session.editor) {
+              void session.editor.close();
+              session.editor = undefined;
+              updateMetadata(session, 'editor', null);
+            }
             session.atPrompt = true; session.agentMonitor.reset(); session.sshMonitor.reset();
           });
         });
         processPty.onData(data => {
           if (sessions.get(session.id) !== session) return;
           session.agentMonitor.observeOutput(data);
-          tracker.push(data);
+          if (integration) tracker.push(data);
           send('terminal:data', {id: session.id, data});
           session.screen.enqueue({type: 'output', data});
         });
@@ -152,13 +170,47 @@ function createSessionManager({send, defaultCwd, version}) {
         if (sessions.has(options.id)) destroySession(options.id);
         else {
           try { processPty?.kill(); } catch { /* Already exited. */ }
-          integration.cleanup();
+          void editor?.close();
+          integration?.cleanup();
         }
         throw error;
       }
     } finally {
       if (pending.get(options.id) === reservation) pending.delete(options.id);
     }
+  }
+
+  function observeEditor(session, editor) {
+    editor.observe(state => send('terminal:editor', {id: session.id, editor: state}));
+  }
+
+  async function openEditor(id, file) {
+    if (!await isTextFile(file)) return 'not-text';
+    const session = sessions.get(id);
+    if (session?.editor?.file === file) return 'opened';
+    const canUseShell = () => session && sessions.get(id) === session && !session.editor && !session.controller &&
+      session.atPrompt === true && session.inputGeneration === session.promptInput;
+    if (!canUseShell()) return 'new-tab';
+    const editor = await createEditor(file);
+    try {
+      const command = [editor.executable, ...editor.args];
+      if (command.some(value => /[\x00-\x1f\x7f]/.test(value)) || !await session.localForeground() || !canUseShell()) return 'new-tab';
+      session.process.write(`${command.map(quote).join(' ')}\r`);
+      session.activityGeneration++;
+      session.atPrompt = false;
+      session.editor = editor;
+      observeEditor(session, editor);
+      return 'opened';
+    } finally {
+      if (session.editor !== editor) void editor.close();
+    }
+  }
+
+  function saveEditor(id, file) {
+    const session = sessions.get(id);
+    if (!session?.editor || session.editor.file !== file) throw new Error('vi is no longer editing this file.');
+    if (session.controller) throw new Error('Take back keyboard control before saving the file.');
+    return session.editor.save();
   }
 
   async function navigate(id, directory) {
@@ -169,6 +221,7 @@ function createSessionManager({send, defaultCwd, version}) {
     if (sessions.get(id) !== session) throw new Error('The session is no longer active.');
     const command = session.shell === 'powershell.exe' ? `Set-Location -LiteralPath ${quote(target)}` : session.shell === 'cmd.exe' ? `cd /d "${target}"` : `cd -- ${quote(target)}`;
     if (session.controller) throw new Error('Take back keyboard control before changing folders.');
+    session.inputGeneration++;
     session.process.write(`\x15${command}\r`);
   }
 
@@ -184,7 +237,10 @@ function createSessionManager({send, defaultCwd, version}) {
     if (!session || typeof data !== 'string' || data.length > 1_048_576) return false;
     if (!response && (session.controller ?? null) !== controller) return false;
     try {
-      if (!response) session.agentMonitor.observeInput(data);
+      if (!response) {
+        session.inputGeneration++;
+        session.agentMonitor.observeInput(data);
+      }
       session.process.write(data);
       return true;
     } catch { return false; }
@@ -221,7 +277,7 @@ function createSessionManager({send, defaultCwd, version}) {
 
   const clear = id => sessions.get(id)?.screen.enqueue({type: 'clear'});
 
-  return {create, refreshAgents, destroySession, destroyAll, write, resize, clear, reportView, setController, navigate,
+  return {create, refreshAgents, destroySession, destroyAll, write, resize, clear, reportView, setController, navigate, openEditor, saveEditor,
     events, get: id => sessions.get(id)};
 }
 

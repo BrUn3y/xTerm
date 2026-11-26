@@ -94,7 +94,7 @@ export default function TerminalPane(props: Props) {
     const unsubscribeExit = desktop.onExit(event => {
       if (event.id === pane.id) {
         terminal.writeln(`\r\n\x1b[90m[Process exited · code ${event.exitCode}]\x1b[0m`);
-        current.current.onUpdate(pane.id, {status: 'exited'});
+        current.current.onUpdate(pane.id, {status: 'exited', editor: null});
       }
     });
     const dataListener = bindTerminalInput(terminal, data => desktop.write(pane.id, data),
@@ -115,7 +115,8 @@ export default function TerminalPane(props: Props) {
       if (disposed) return;
       safeFit();
       try {
-        const result = await desktop.createTerminal({id: pane.id, cwd: pane.cwd, shell: pane.shell, cols: terminal.cols, rows: terminal.rows});
+        const result = await desktop.createTerminal({id: pane.id, cwd: pane.cwd, shell: pane.shell,
+          cols: terminal.cols, rows: terminal.rows, editorPath: pane.editorPath});
         created = true;
         if (disposed) { await desktop.closeTerminal(pane.id); return; }
         current.current.onUpdate(pane.id, {status: 'running', pid: result.pid, cwd: result.cwd});
@@ -124,7 +125,7 @@ export default function TerminalPane(props: Props) {
         if (current.current.active && current.current.visible) terminal.focus();
       } catch (error) {
         if (!disposed) {
-          terminal.writeln(`\x1b[31mCould not start the shell.\x1b[0m\r\n${String(error)}\r\n`);
+          terminal.writeln(`\x1b[31m${pane.editorPath ? 'Could not open the file in vi.' : 'Could not start the shell.'}\x1b[0m\r\n${String(error)}\r\n`);
           current.current.onUpdate(pane.id, {status: 'error'});
         }
       }

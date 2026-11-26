@@ -65,9 +65,9 @@ export default function App() {
     setToast(message); if (toastTimer.current) clearTimeout(toastTimer.current);
     toastTimer.current = setTimeout(() => setToast(''), 4200);
   }, []);
-  const newTab = (directory = cwd, selectedShell = shell) => {
+  const newTab = (directory = cwd, selectedShell = shell, editorPath?: string) => {
     if (tabs.reduce((n, tab) => n + tab.panes.length, 0) >= 24) { notify('You can open up to 24 sessions.'); return; }
-    const pane: Pane = {id: uid(), cwd: directory, shell: selectedShell || info?.shell || '/bin/zsh', status: 'connecting'};
+    const pane: Pane = {id: uid(), cwd: directory, shell: selectedShell || info?.shell || '/bin/zsh', status: 'connecting', editorPath};
     const tab: Tab = {id: uid(), panes: [pane], activePane: pane.id};
     setTabs(current => [...current, tab]); setActiveTabId(tab.id); setSearch(false);
   };
@@ -98,6 +98,7 @@ export default function App() {
   useEffect(() => window.desktop?.onAgent(({id, agent}) => updatePane(id, {agent})), [updatePane]);
   useEffect(() => window.desktop?.onSsh(({id, ssh}) => updatePane(id, {ssh})), [updatePane]);
   useEffect(() => window.desktop?.onControl(({id, remote}) => updatePane(id, {remoteControl: remote})), [updatePane]);
+  useEffect(() => window.desktop?.onEditor(({id, editor}) => updatePane(id, {editor})), [updatePane]);
   useEffect(() => {
     const remote = window.desktop?.remote;
     if (!remote) return;
@@ -142,7 +143,7 @@ export default function App() {
   const restartPane = (id: string) => {
     closeSession(id);
     const replacementId = uid();
-    setTabs(current => current.map(tab => ({...tab, activePane: tab.activePane === id ? replacementId : tab.activePane, panes: tab.panes.map(pane => pane.id === id ? {...pane, id: replacementId, status: 'connecting', pid: undefined} : pane)})));
+    setTabs(current => current.map(tab => ({...tab, activePane: tab.activePane === id ? replacementId : tab.activePane, panes: tab.panes.map(pane => pane.id === id ? {...pane, id: replacementId, status: 'connecting', pid: undefined, editorPath: undefined, editor: null} : pane)})));
   };
   const split = () => {
     if (!activeTab || !activePane) return;
@@ -155,6 +156,18 @@ export default function App() {
     if (activePane.status !== 'running') { newTab(directory); return; }
     void window.desktop.navigate(activePane.id, directory).catch(error => notify(String(error).replace(/^Error:.*?: /, '')));
     activeHandle()?.focus();
+  };
+  const openFile = async (file: string) => {
+    if (!window.desktop) return false;
+    const result = await window.desktop.openEditor(activePane?.id, file);
+    if (result === 'new-tab') newTab(cwd, shell, file);
+    if (result === 'opened') activeHandle()?.focus();
+    return result !== 'not-text';
+  };
+  const saveFile = async (file: string) => {
+    if (!window.desktop || !activePane) return;
+    activeHandle()?.focus();
+    await window.desktop.saveEditor(activePane.id, file);
   };
   const chooseFolder = async (pin = false) => {
     try {
@@ -255,7 +268,7 @@ export default function App() {
             <div className="terminal-bottom"><span><i className={status === 'running' ? 'live-dot' : 'idle-dot'}/>{status === 'running' ? 'Session connected' : status === 'connecting' ? 'Connecting…' : status === 'exited' ? 'Session ended' : status === 'error' ? 'Connection error' : 'Web preview'}</span><span className="terminal-bottom-hint">ONE IDEA. ONE COMMAND. <ArrowUpRight size={12}/></span><span>{activePane?.pid ? `PID ${activePane.pid}` : '—'}</span></div>
             <div className="terminal-artwork" aria-hidden="true"><div className="artwork-label">INPUT / OUTPUT<br/>ENDLESS POSSIBILITIES</div><div className="artwork-lines"/><span className="artwork-cross cross-one">+</span><span className="artwork-cross cross-two">+</span><div className="artwork-corner"/><div className="artwork-scan"/><span className="artwork-number">01</span></div>
           </div>
-          {explorer && <Explorer cwd={cwd} home={home} settings={settings} onNavigate={navigate} onHidden={() => setSettings(value => ({...value, showHidden: !value.showHidden}))} onError={notify} refreshKey={refreshKey}/>}
+          {explorer && <Explorer cwd={cwd} home={home} settings={settings} editor={activePane?.editor} onOpenFile={openFile} onSaveFile={saveFile} onNavigate={navigate} onHidden={() => setSettings(value => ({...value, showHidden: !value.showHidden}))} onError={notify} refreshKey={refreshKey}/>}
         </div>
         <div className="quick-command-bar"><div><Zap size={13}/><span>QUICK ACCESS</span></div><button title="Insert pwd into terminal" onClick={() => insertCommand('pwd')}>pwd <ArrowUpRight size={11}/></button><button title="Insert ls -lah into terminal" onClick={() => insertCommand('ls -lah')}>ls -lah <ArrowUpRight size={11}/></button><button title="Insert git status into terminal" onClick={() => insertCommand('git status')}>git status <ArrowUpRight size={11}/></button><button className="all-commands" onClick={() => showOverlay('palette')}>All commands <ArrowRight size={13}/></button></div>
       </main>
