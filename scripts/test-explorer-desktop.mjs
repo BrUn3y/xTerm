@@ -13,6 +13,7 @@ const file = path.join(home, filename);
 const dockerfile = path.join(home, 'Dockerfile');
 const text = Array.from({length: 120}, (_, index) => `ROW_${String(index + 1).padStart(3, '0')}`).join('\n') + '\n';
 const shell = process.env.XTERM_TEST_SHELL || '/bin/bash';
+const executablePath = process.env.XTERM_DESKTOP_TEST_EXECUTABLE;
 let application;
 
 try {
@@ -24,12 +25,14 @@ try {
     writeFile(file, text),
   ]);
   application = await electron.launch({
-    args: [`--user-data-dir=${path.join(home, 'user-data')}`, root],
+    executablePath,
+    args: [`--user-data-dir=${path.join(home, 'user-data')}`, ...(executablePath ? [] : [root])],
     cwd: home,
     env: {...process.env, HOME: home, ZDOTDIR: home, XDG_CONFIG_HOME: home, SHELL: shell,
       XTERM_DEV_URL: '', ELECTRON_RUN_AS_NODE: '', VIMINIT: '', EXINIT: ''},
   });
   const page = await application.firstWindow();
+  assert.equal(await application.evaluate(({app}) => app.isPackaged), !!executablePath);
   const errors = [];
   page.on('pageerror', error => errors.push(error.message));
   const tabs = page.getByRole('tab');
@@ -110,6 +113,15 @@ try {
   await untilScreen(/Local Codex rendering fixture/);
   await input.press('Control+c');
   await untilScreen(/EXPLORER_PROMPT>/);
+  await tabs.nth(1).getByRole('button', {name: 'Close tab'}).click();
+
+  await keys("printf 'draft still here\\n'");
+  await open('Dockerfile');
+  await untilScreen(/\b1\s+# second buffer FROM scratch/);
+  assert.equal(await tabs.count(), 2, 'A draft command should stay in the existing shell');
+  await tabs.first().click();
+  await enter();
+  await untilScreen(/draft still hereEXPLORER_PROMPT>/);
   assert.deepEqual(errors, []);
   console.log(`Explorer vi verified with ${shell}: routing, line numbers, scrolling, per-session saves and write failures.`);
 } finally {

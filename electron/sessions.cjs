@@ -91,7 +91,7 @@ function createSessionManager({send, defaultCwd, version}) {
       const shellPath = options.shell || process.env.SHELL || (process.platform === 'win32' ? 'powershell.exe' : '/bin/zsh');
       const allowedShells = new Set([process.env.SHELL, '/bin/zsh', '/bin/bash', 'powershell.exe', 'cmd.exe']);
       if (!allowedShells.has(shellPath)) throw new Error('Shell is not available.');
-      let processPty, editor, integration;
+      let processPty, editor, integration, session;
       try {
         if (options.editorPath !== undefined) {
           if (!await isTextFile(options.editorPath)) throw new Error('The selected file is no longer a text file.');
@@ -106,7 +106,7 @@ function createSessionManager({send, defaultCwd, version}) {
           name: 'xterm-256color', cols, rows,
           cwd, env: { ...process.env, TERM: 'xterm-256color', COLORTERM: 'truecolor', TERM_PROGRAM: 'xTerm', TERM_PROGRAM_VERSION: version(), ...integration?.env },
         });
-        const session = { id: options.id, process: processPty, cwd, integration, editor, shell: path.basename(shellPath),
+        session = { id: options.id, process: processPty, cwd, integration, editor, shell: path.basename(shellPath),
           atPrompt: editor || path.basename(shellPath) === 'zsh' ? false : null,
           activityGeneration: 0, inputGeneration: 0, promptInput: 0 };
         session.screen = new TerminalState(cols, rows, event => events.emit('screen', session.id, event),
@@ -147,7 +147,7 @@ function createSessionManager({send, defaultCwd, version}) {
             if (session.editor) {
               void session.editor.close();
               session.editor = undefined;
-              updateMetadata(session, 'editor', null);
+              send('terminal:editor', {id: session.id, editor: null});
             }
             session.atPrompt = true; session.agentMonitor.reset(); session.sshMonitor.reset();
           });
@@ -167,7 +167,7 @@ function createSessionManager({send, defaultCwd, version}) {
         watchSession(session);
         return { id: session.id, cwd, shell: session.shell, pid: processPty.pid };
       } catch (error) {
-        if (sessions.has(options.id)) destroySession(options.id);
+        if (session && sessions.get(options.id) === session) destroySession(options.id);
         else {
           try { processPty?.kill(); } catch { /* Already exited. */ }
           void editor?.close();

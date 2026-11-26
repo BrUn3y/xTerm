@@ -46,6 +46,7 @@ export default function TerminalPane(props: Props) {
     if (!container.current || !desktop) return;
     let disposed = false;
     let created = false;
+    let exited = false;
     const terminal = new Terminal({
       fontFamily: settings.font, fontSize: settings.fontSize, lineHeight: settings.lineHeight,
       cursorStyle: settings.cursor, cursorBlink: true, allowTransparency: true,
@@ -93,6 +94,7 @@ export default function TerminalPane(props: Props) {
     const unsubscribeCwd = desktop.onCwd(event => { if (event.id === pane.id) current.current.onUpdate(pane.id, {cwd: event.cwd}); });
     const unsubscribeExit = desktop.onExit(event => {
       if (event.id === pane.id) {
+        exited = true;
         terminal.writeln(`\r\n\x1b[90m[Process exited · code ${event.exitCode}]\x1b[0m`);
         current.current.onUpdate(pane.id, {status: 'exited', editor: null});
       }
@@ -119,6 +121,7 @@ export default function TerminalPane(props: Props) {
           cols: terminal.cols, rows: terminal.rows, editorPath: pane.editorPath});
         created = true;
         if (disposed) { await desktop.closeTerminal(pane.id); return; }
+        if (exited) return;
         current.current.onUpdate(pane.id, {status: 'running', pid: result.pid, cwd: result.cwd});
         safeFit();
         desktop.resize(pane.id, terminal.cols, terminal.rows);
